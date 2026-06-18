@@ -196,9 +196,19 @@ class Question(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     issue_id: Mapped[int] = mapped_column(ForeignKey("issue.id"), nullable=False, index=True)
-    body: Mapped[str] = mapped_column(Text, nullable=False)  # 쟁점 질문 (법안명·정당명 미포함)
-    agree_meaning: Mapped[str] = mapped_column(Text, nullable=False)  # 찬성 측 핵심 논리 한 줄
-    disagree_meaning: Mapped[str] = mapped_column(Text, nullable=False)  # 반대 측 핵심 논리 한 줄
+    body: Mapped[str] = mapped_column(Text, nullable=False)  # 생활 언어로 된 상황 질문 (법안명·정당명 미포함)
+    agree_meaning: Mapped[str] = mapped_column(Text, nullable=False)  # = option_a_pro (요약·하위호환)
+    disagree_meaning: Mapped[str] = mapped_column(Text, nullable=False)  # = option_b_pro (요약·하위호환)
+
+    # 장단점 중심 Ⓐ/Ⓑ 선택지 — 정치 용어 없이 양쪽 장점+단점을 대칭 제시.
+    # 채점 규약: option_a = 앵커 법안 '찬성' 표결 방향, option_b = '반대' 방향.
+    option_a_label: Mapped[str | None] = mapped_column(Text)
+    option_a_pro: Mapped[str | None] = mapped_column(Text)  # 👍
+    option_a_con: Mapped[str | None] = mapped_column(Text)  # 👎
+    option_b_label: Mapped[str | None] = mapped_column(Text)
+    option_b_pro: Mapped[str | None] = mapped_column(Text)
+    option_b_con: Mapped[str | None] = mapped_column(Text)
+
     bill_id: Mapped[int | None] = mapped_column(ForeignKey("bill.id"), index=True)  # 문항↔법안 매핑
     source_note: Mapped[str | None] = mapped_column(Text)  # "원래 어떤 법안인지" 출처 메모
 
