@@ -47,3 +47,7 @@ pgdata/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# ETL 스모크 검증 산출물
+etl/scripts/.smoke.sqlite
+*.sqlite

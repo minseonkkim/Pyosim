@@ -73,6 +73,8 @@ class Person(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # 열린국회정보 의원코드(MONA_CD) — 표결기록 매핑 키. 현직 22대 기준 고유.
+    assembly_member_code: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
     party_id: Mapped[int | None] = mapped_column(ForeignKey("party.id"))
     district: Mapped[str | None] = mapped_column(String(120))
     photo_url: Mapped[str | None] = mapped_column(Text)
@@ -105,6 +107,8 @@ class Bill(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     bill_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False, index=True)  # 의안번호
+    # 열린국회정보 BILL_ID(PRC_...) — 표결기록·likms 직링크 키
+    assembly_bill_id: Mapped[str | None] = mapped_column(String(60), index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     proposer_id: Mapped[int | None] = mapped_column(ForeignKey("person.id"))
     proposed_date: Mapped[date | None] = mapped_column(Date)
@@ -132,6 +136,13 @@ class Vote(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     bill_id: Mapped[int] = mapped_column(ForeignKey("bill.id"), nullable=False, index=True)
     session_date: Mapped[date | None] = mapped_column(Date)
+
+    # 본회의 표결 집계 (의안별 표결현황 ncocpgfiaoituanbr) — 의원별 기록 없이도 전체 찬반 표시용
+    member_total: Mapped[int | None] = mapped_column(Integer)  # 재적
+    vote_total: Mapped[int | None] = mapped_column(Integer)  # 총투표
+    yes_total: Mapped[int | None] = mapped_column(Integer)  # 찬성
+    no_total: Mapped[int | None] = mapped_column(Integer)  # 반대
+    blank_total: Mapped[int | None] = mapped_column(Integer)  # 기권
 
     source_url: Mapped[str | None] = mapped_column(Text)
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
