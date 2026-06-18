@@ -1,0 +1,7 @@
+httpx==0.28.1
+python-dotenv==1.0.1
+pydantic==2.10.4
+pydantic-settings==2.7.0
+# DB 적재 시 backend 모델 재사용 (동일 DATABASE_URL)
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3

@@ -1,0 +1,49 @@
+# ───────── 공통 ─────────
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+Thumbs.db
+*.log
+
+# ───────── 비밀/키 ─────────
+*.pem
+*.key
+secrets/
+**/serviceAccount*.json
+
+# ───────── Node / Next.js (frontend) ─────────
+node_modules/
+.next/
+out/
+.vercel/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# ───────── Python (backend / etl) ─────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ───────── DB / 데이터 ─────────
+*.sqlite3
+*.db
+/data/
+pgdata/
+
+# ───────── 에디터 ─────────
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

@@ -1,0 +1,73 @@
+{
+  "ALLNAMEMBER": [
+    {
+      "head": [
+        {
+          "list_total_count": 3295
+        },
+        {
+          "RESULT": {
+            "CODE": "INFO-000",
+            "MESSAGE": "정상 처리되었습니다."
+          }
+        }
+      ]
+    },
+    {
+      "row": [
+        {
+          "NAAS_CD": "D2V1479C",
+          "NAAS_NM": "갈봉근",
+          "NAAS_CH_NM": "葛奉根",
+          "NAAS_EN_NM": null,
+          "BIRDY_DIV_CD": "음",
+          "BIRDY_DT": "1932-04-06",
+          "DTY_NM": null,
+          "PLPT_NM": "유신정우회/유신정우회",
+          "ELECD_NM": null,
+          "ELECD_DIV_NM": "통일주체국민회의/통일주체국민회의",
+          "CMIT_NM": null,
+          "BLNG_CMIT_NM": "법제사법위원회, 예산결산특별위원회, 건설위원회/법제사법위원회",
+          "RLCT_DIV_NM": "재선",
+          "GTELT_ERACO": "제9대, 제10대",
+          "NTR_DIV": "남",
+          "NAAS_TEL_NO": null,
+          "NAAS_EMAIL_ADDR": null,
+          "NAAS_HP_URL": null,
+          "AIDE_NM": null,
+          "CHF_SCRT_NM": null,
+          "SCRT_NM": null,
+          "BRF_HST": null,
+          "OFFM_RNUM_NO": null,
+          "NAAS_PIC": "https://www.assembly.go.kr/static/portal/img/openassm/D2V1479C.jpg"
+        },
+        {
+          "NAAS_CD": "T2T8225E",
+          "NAAS_NM": "강경숙",
+          "NAAS_CH_NM": "姜景淑",
+          "NAAS_EN_NM": "KANG KYUNGSOOK",
+          "BIRDY_DIV_CD": "양",
+          "BIRDY_DT": "1967-05-02",
+          "DTY_NM": "위원",
+          "PLPT_NM": "조국혁신당",
+          "ELECD_NM": "비례대표",
+          "ELECD_DIV_NM": "비례대표",
+          "CMIT_NM": null,
+          "BLNG_CMIT_NM": null,
+          "RLCT_DIV_NM": "초선",
+          "GTELT_ERACO": "제22대",
+          "NTR_DIV": "여",
+          "NAAS_TEL_NO": "02-784-5601",
+          "NAAS_EMAIL_ADDR": "gracesook52@rebuildingk.kr",
+          "NAAS_HP_URL": "https://blog.naver.com/grace6752",
+          "AIDE_NM": "김재삼, 서용선",
+          "CHF_SCRT_NM": "김홍, 오세령",
+          "SCRT_NM": "유은영, 김예닮, 이경열, 김희경, 채윤아",
+          "BRF_HST": "2024.5~ 제22대 국회의원 (비례대표/조국혁신당)\r\n2021.2~2023.2 장애인정책조정위원회 위원\r\n2021 대통령직속 국가균형발전위원회 위원\r\n2017.12~2018 대통령직속 국가교육회의 위원\r\n2013.7~2014.7 미국 워싱턴대학교 특수교육과 연구교수\r\n~2012.3 원광대학교 입학기획부처장\r\n2011.1 원광대학교 입학사정관실장\r\n2007.4~ 원광대학교 중등특수교육과 교수\r\n2000.3~2007.3 교육부 국립특수교육원 교육연구사\r\n1993.3~2000.2 은평초등학교 특수교육 교사\r\n1991.4~1992.8 세이브더칠드런 해외사업부",
+          "OFFM_RNUM_NO": "의원회관 515호",
+          "NAAS_PIC": "https://www.assembly.go.kr/static/portal/img/openassm/new/68f83caf0c9e4546b1694ead863f45ce.jpg"
+        }
+      ]
+    }
+  ]
+}
