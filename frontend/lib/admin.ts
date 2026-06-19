@@ -91,10 +91,3 @@ export function transitionQuestion(
     body: JSON.stringify({ action, ...opts }),
   });
 }
-
-export function generateQuestion(billId: number): Promise<AdminQuestion> {
-  return req<AdminQuestion>(`/admin/questions/generate`, {
-    method: "POST",
-    body: JSON.stringify({ bill_id: billId }),
-  });
-}

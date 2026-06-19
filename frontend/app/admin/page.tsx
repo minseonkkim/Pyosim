@@ -14,7 +14,6 @@ import {
   listQuestions,
   patchQuestion,
   transitionQuestion,
-  generateQuestion,
 } from "@/lib/admin";
 
 const STATUS_TABS = ["전체", "초안", "검토중", "승인", "아카이브"] as const;
@@ -281,19 +280,6 @@ function QuestionCard({
           </>
         )}
       </div>
-
-      {/* 🤖 이 법안으로 LLM 초안 다시 생성 */}
-      {q.bill_id && (
-        <div style={{ marginTop: 8 }}>
-          <button
-            className="btn btn-ghost"
-            style={{ padding: "5px 10px", fontSize: 12 }}
-            onClick={() => onAct(() => generateQuestion(q.bill_id as number))}
-          >
-            🤖 이 법안(#{q.bill_id})으로 LLM 초안 생성
-          </button>
-        </div>
-      )}
     </div>
   );
 }

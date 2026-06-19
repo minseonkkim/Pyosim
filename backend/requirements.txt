@@ -6,4 +6,3 @@ psycopg[binary]==3.2.3
 pydantic==2.10.4
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
-anthropic==0.69.0  # Phase 2-3 LLM 문항 초안 생성 (키 없으면 미사용)

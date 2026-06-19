@@ -5,7 +5,7 @@
 
 🟡 안전선:
   - 모든 엔드포인트는 `X-Admin-Token` 헤더 필요. settings.admin_token 미설정 시 전부 401(기본 잠금).
-  - LLM 생성물은 항상 status=초안, created_by=auto → 사람 승인 전 비공개.
+  - 승인 문항만 공개 → 사람 승인 전 비공개. 승인 문항 수정 시 검토중으로 환원(재검토 강제).
   - '반려'는 status=아카이브 + review_note='[반려] 사유'로 기록(문서화된 흐름 유지).
 
 엔드포인트:
@@ -13,7 +13,9 @@
   GET   /admin/questions/{id}             단건
   PATCH /admin/questions/{id}             문항 수정
   POST  /admin/questions/{id}/transition  상태 전이(검토시작/승인/반려/아카이브/초안복귀)
-  POST  /admin/questions/generate         🤖 법안 → LLM 중립 초안 생성
+
+문항 초안 작성은 런타임 LLM 대신 개발 세션에서 중립 프롬프트로 생성 후 seed_questions.py
+에 커밋한다(docs/문항_생성_프롬프트.md). 여기 어드민은 그 초안의 검토·승인 게이트만 담당.
 """
 from __future__ import annotations
 
@@ -26,12 +28,10 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.llm_questions import LLMUnavailable, draft_question_for_bill
 from app.models import (
     Bill,
     Issue,
     Question,
-    QuestionCreator,
     QuestionStatus,
 )
 
@@ -85,10 +85,6 @@ class TransitionIn(BaseModel):
     action: str = Field(description="검토시작|승인|반려|아카이브|초안복귀")
     by: str = Field(default="admin", max_length=100)
     note: str | None = Field(default=None, max_length=2000)
-
-
-class GenerateIn(BaseModel):
-    bill_id: int
 
 
 # ───────────────────────── 헬퍼 ─────────────────────────
@@ -227,57 +223,6 @@ def transition_question(
             q.review_note = req.note
 
     q.status = target
-    db.commit()
-    db.refresh(q)
-    return _out(q)
-
-
-@router.post(
-    "/questions/generate",
-    response_model=AdminQuestionOut,
-    dependencies=[Depends(require_admin)],
-)
-def generate_question(req: GenerateIn, db: Session = Depends(get_db)) -> AdminQuestionOut:
-    """🤖 법안 → LLM 중립 초안. 항상 status=초안, created_by=auto."""
-    bill = db.get(Bill, req.bill_id)
-    if bill is None:
-        raise HTTPException(status_code=404, detail=f"법안 {req.bill_id} 없음.")
-
-    try:
-        draft = draft_question_for_bill(bill)
-    except LLMUnavailable as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except ValueError as e:  # LLM 출력 형식 불량 — 재시도 가능
-        raise HTTPException(status_code=502, detail=f"LLM 초안 파싱 실패: {e}")
-
-    issue = db.scalar(select(Issue).where(Issue.name == draft.issue))
-    if issue is None:
-        raise HTTPException(
-            status_code=500, detail=f"LLM이 고른 쟁점 '{draft.issue}'이 시드에 없음."
-        )
-
-    source = f"{bill.title} · 의안 {bill.bill_no}"
-    if bill.likms_url:
-        source += f" ({bill.likms_url})"
-
-    q = Question(
-        issue_id=issue.id,
-        body=draft.body,
-        agree_meaning=draft.option_a_pro,  # 하위호환 요약
-        disagree_meaning=draft.option_b_pro,
-        option_a_label=draft.option_a_label,
-        option_a_pro=draft.option_a_pro,
-        option_a_con=draft.option_a_con,
-        option_b_label=draft.option_b_label,
-        option_b_pro=draft.option_b_pro,
-        option_b_con=draft.option_b_con,
-        bill_id=bill.id,
-        source_note=source,
-        status=QuestionStatus.초안,
-        created_by=QuestionCreator.auto,
-        review_note=f"[LLM초안] {draft.rationale}",
-    )
-    db.add(q)
     db.commit()
     db.refresh(q)
     return _out(q)

@@ -3,7 +3,6 @@
 backend 디렉터리에서: python scripts/verify_admin.py
 스키마 생성 → 시드 → 어드민 토큰/인증 → 검토 큐 → 전이(승인 후 공개 노출) →
 수정→재검토 → 반려 검증.
-LLM generate 는 키가 없으면 503 을 기대(중립성 안전선: 키 없으면 자동 생성 비활성).
 """
 from __future__ import annotations
 
@@ -18,7 +17,6 @@ if str(_BACKEND) not in sys.path:
 _DB = _BACKEND / "scripts" / ".verify_admin.sqlite"
 os.environ["DATABASE_URL"] = f"sqlite:///{_DB}"
 os.environ["ADMIN_TOKEN"] = "test-admin-token"
-os.environ["ANTHROPIC_API_KEY"] = ""  # 키 없음 → generate 비활성 확인
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
@@ -116,13 +114,6 @@ def main() -> int:
     body = r.json()
     assert body["status"] == "아카이브" and body["review_note"].startswith("[반려]"), body
     print(f"  문항 #{qid2} 반려: {body['review_note']} ✅")
-
-    print("\n── LLM generate: 키 없으면 503(자동 생성 비활성) ──")
-    bill_id = next((q["bill_id"] for q in qs if q["bill_id"]), None)
-    if bill_id:
-        r = client.post("/admin/questions/generate", headers=AUTH, json={"bill_id": bill_id})
-        assert r.status_code == 503, r.text
-        print(f"  generate 503: {r.json()['detail'][:40]}… ✅")
 
     with SessionLocal() as s:
         approved = s.scalars(
