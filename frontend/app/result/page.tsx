@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { ResultsResponse } from "@/lib/api";
 import { popResult } from "@/lib/session";
 import { summarize, shareUrl } from "@/lib/share";
+import { track } from "@/lib/analytics";
 import PartyChart from "./PartyChart";
 
 export default function ResultPage() {
@@ -18,7 +19,9 @@ export default function ResultPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setResult(popResult());
+    const r = popResult();
+    setResult(r);
+    if (r) track("result_view", { answered: r.answered, skipped: r.skipped });
   }, []);
 
   const summary = useMemo(
@@ -53,12 +56,14 @@ export default function ResultPage() {
     if (navigator.share) {
       try {
         await navigator.share({ title: "표심 · Pyosim", text, url });
+        track("share_click", { method: "native" });
         return;
       } catch {
         /* 사용자가 취소 — 복사로 폴백 */
       }
     }
     await navigator.clipboard.writeText(url);
+    track("share_click", { method: "copy" });
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -137,7 +142,13 @@ export default function ResultPage() {
             </div>
           )}
           {q.source_note && (
-            <details className="source">
+            <details
+              className="source"
+              onToggle={(e) => {
+                if ((e.target as HTMLDetailsElement).open)
+                  track("source_open", { question_id: q.question_id });
+              }}
+            >
               <summary>출처 ▼</summary>
               <p style={{ marginBottom: 4 }}>{q.source_note}</p>
               {q.likms_url && (

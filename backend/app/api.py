@@ -11,16 +11,19 @@
 """
 from __future__ import annotations
 
+import json
+
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.db import get_db
 from app.models import (
     Answer,
     AnswerChoice,
     Bill,
+    Event,
     Party,
     Question,
     QuestionStatus,
@@ -254,3 +257,72 @@ def compute_results(
         disclaimer=DISCLAIMER,
         method_note=METHOD_NOTE,
     )
+
+
+# ───────────────────────── 익명 퍼널 로깅 (Phase 1-6) ─────────────────────────
+# 이탈 지점 측정용 화이트리스트. 정의되지 않은 이벤트명은 조용히 버린다(임의 적재 방지).
+ALLOWED_EVENTS: frozenset[str] = frozenset(
+    {
+        "landing",        # 진입 화면 노출
+        "test_start",     # 테스트 진입(문항 로드)
+        "question_view",  # 문항 노출 (props: idx, total)
+        "answer",         # 답변 선택 (props: idx, choice)
+        "test_complete",  # 제출 완료 (props: answered, skipped)
+        "result_view",    # 결과 화면 노출
+        "share_click",    # 공유 시도 (props: method)
+        "source_open",    # ▼출처 펼침(데이터 신뢰 engagement)
+    }
+)
+_MAX_EVENTS_PER_BATCH = 50
+_MAX_PROP_KEYS = 8
+
+
+def _sanitize_props(props: object) -> dict | None:
+    """🟡 원시값(str/int/float/bool)만 통과. 중첩·임의 데이터·PII 적재 차단."""
+    if not isinstance(props, dict):
+        return None
+    clean: dict = {}
+    for k, v in props.items():
+        if len(clean) >= _MAX_PROP_KEYS:
+            break
+        if not isinstance(k, str) or len(k) > 40:
+            continue
+        if isinstance(v, bool) or isinstance(v, (int, float)):
+            clean[k] = v
+        elif isinstance(v, str):
+            clean[k] = v[:120]
+    return clean or None
+
+
+@router.post("/events")
+async def collect_events(request: Request, db: Session = Depends(get_db)) -> dict[str, int]:
+    """익명 이벤트 배치 적재. text/plain(sendBeacon)·application/json 모두 허용.
+
+    sendBeacon 은 CORS 프리플라이트를 못 하므로 프론트가 text/plain 으로 보낸다.
+    → content-type 무관하게 본문을 직접 파싱한다.
+    """
+    raw = await request.body()
+    try:
+        data = json.loads(raw or b"{}")
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="잘못된 본문(JSON 아님).")
+
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="잘못된 본문 형식.")
+    session_id = str(data.get("session_id") or "")[:64]
+    events = data.get("events")
+    if not session_id or not isinstance(events, list):
+        raise HTTPException(status_code=400, detail="session_id 와 events 가 필요합니다.")
+
+    accepted = 0
+    for e in events[:_MAX_EVENTS_PER_BATCH]:
+        if not isinstance(e, dict):
+            continue
+        name = str(e.get("name") or "")
+        if name not in ALLOWED_EVENTS:
+            continue
+        db.add(Event(session_id=session_id, name=name, props=_sanitize_props(e.get("props"))))
+        accepted += 1
+
+    db.commit()
+    return {"accepted": accepted}

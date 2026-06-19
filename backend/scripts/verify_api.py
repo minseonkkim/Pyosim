@@ -5,6 +5,7 @@ backend 디렉터리에서: python scripts/verify_api.py
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -22,8 +23,9 @@ except Exception:  # noqa: BLE001
     pass
 
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
-from app.db import Base, engine  # noqa: E402
+from app.db import Base, SessionLocal, engine  # noqa: E402
 from app import seed, seed_demo, seed_questions  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -84,6 +86,31 @@ def main() -> int:
     res = r.json()
     print(f"  답함 {res['answered']} / 모름 {res['skipped']} / 정당 {len(res['party_match'])}개")
     assert res["skipped"] == sum(1 for m in mixed if m["choice"] == "모름")
+
+    print("\n── POST /api/events (퍼널 로깅) ──")
+    payload = {
+        "session_id": "verify-sess",
+        "events": [
+            {"name": "landing"},
+            {"name": "test_start", "props": {"total": 8}},
+            {"name": "answer", "props": {"idx": 0, "choice": "찬성"}},
+            {"name": "result_view", "props": {"answered": 6, "skipped": 2}},
+            {"name": "삭제하라는_임의이벤트"},  # 화이트리스트 밖 → 버려져야 함
+        ],
+    }
+    r = client.post("/api/events", content=json.dumps(payload), headers={"Content-Type": "text/plain"})
+    assert r.status_code == 200, r.text
+    accepted = r.json()["accepted"]
+    print(f"  accepted={accepted} (화이트리스트 밖 1건 제외 → 4 기대)")
+    assert accepted == 4, accepted
+
+    from app.models import Event  # noqa: E402
+
+    with SessionLocal() as s:
+        names = sorted(e.name for e in s.scalars(select(Event)).all())
+        print(f"  적재된 이벤트: {names}")
+        assert "삭제하라는_임의이벤트" not in names
+        assert len(names) == 4
 
     print("\n✅ API end-to-end 검증 통과")
     return 0

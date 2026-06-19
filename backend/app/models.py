@@ -10,6 +10,7 @@ import enum
 from datetime import date, datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
@@ -239,6 +240,23 @@ class Answer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     question: Mapped[Question] = relationship(back_populates="answers")
+
+
+# ───────────────────────── 익명 퍼널 로깅 (Phase 1-6) ─────────────────────────
+class Event(Base):
+    """이탈 지점 측정용 익명 이벤트 — "한 단계 더 들어오는가"(기획서 2장·6장).
+
+    🟡 PII 미수집: 익명 세션ID(localStorage UUID) + 이벤트명 + 소형 props 만.
+       IP·User-Agent·개인식별정보는 저장하지 않는다. props 는 API에서 화이트리스트로
+       원시값(str/int/float/bool)만 통과시킨다.
+    """
+    __tablename__ = "event"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)  # 익명 세션
+    name: Mapped[str] = mapped_column(String(40), nullable=False, index=True)  # 화이트리스트 이벤트명
+    props: Mapped[dict | None] = mapped_column(JSON)  # 소형 원시값만
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # ───────────────────────── 관계 그래프 (Phase 3) ─────────────────────────

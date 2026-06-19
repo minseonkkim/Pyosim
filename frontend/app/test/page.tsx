@@ -20,6 +20,7 @@ import {
   stashResult,
   type AnswerMap,
 } from "@/lib/session";
+import { track } from "@/lib/analytics";
 
 export default function TestPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function TestPage() {
         // 저장된 답이 있으면 첫 미응답 문항으로 점프
         const firstUnanswered = res.questions.findIndex((q) => !(q.id in saved));
         setIdx(firstUnanswered === -1 ? res.questions.length - 1 : firstUnanswered);
+        track("test_start", { total: res.questions.length });
       })
       .catch((e) =>
         setError(
@@ -47,6 +49,16 @@ export default function TestPage() {
         ),
       );
   }, []);
+
+  // 문항 노출 추적 — 어느 문항에서 이탈하는지(드롭오프) 측정.
+  useEffect(() => {
+    if (!questions || !questions[idx]) return;
+    track("question_view", {
+      idx,
+      total: questions.length,
+      question_id: questions[idx].id,
+    });
+  }, [idx, questions]);
 
   if (error) {
     return (
@@ -79,6 +91,7 @@ export default function TestPage() {
     const next = { ...answers, [q.id]: choice };
     setAnswers(next);
     saveAnswers(next);
+    track("answer", { idx, question_id: q.id, choice });
     // 마지막 문항이 아니면 살짝 뒤 자동 진행
     if (idx < total - 1) {
       setTimeout(() => setIdx((i) => Math.min(i + 1, total - 1)), 220);
@@ -94,6 +107,10 @@ export default function TestPage() {
         choice: answers[qq.id],
       }));
       const result = await submitResults(getSessionId(), payload);
+      track("test_complete", {
+        answered: result.answered,
+        skipped: result.skipped,
+      });
       stashResult(result);
       clearAnswers();
       router.push("/result");
@@ -152,7 +169,13 @@ export default function TestPage() {
       </button>
 
       {q.source_note && (
-        <details className="source">
+        <details
+          className="source"
+          onToggle={(e) => {
+            if ((e.target as HTMLDetailsElement).open)
+              track("source_open", { question_id: q.id });
+          }}
+        >
           <summary>원래 어떤 법안인지 ▼</summary>
           <p style={{ marginBottom: 4 }}>{q.source_note}</p>
           {q.likms_url && (

@@ -1,9 +1,12 @@
 // 진입 화면 — "나"에서 시작. 정치 용어 0, 법안목록 X (기획서 설계 원칙).
 import Link from "next/link";
 
+import TrackOnMount from "./TrackOnMount";
+
 export default function Home() {
   return (
     <main>
+      <TrackOnMount event="landing" />
       <span className="chip" style={{ marginTop: 8 }}>
         실제 국회 표결 기반
       </span>
