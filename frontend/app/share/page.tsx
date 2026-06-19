@@ -44,16 +44,12 @@ export default async function SharePage({ searchParams }: { searchParams: SP }) 
   const party = one(sp.party, "");
   const rate = one(sp.rate, "0");
   const n = one(sp.n, "0");
-  const color = `#${one(sp.color, "152484").replace(/[^0-9a-fA-F]/g, "")}`;
+  const color = `#${one(sp.color, "18171D").replace(/[^0-9a-fA-F]/g, "")}`;
 
   return (
     <main>
-      <div style={{ fontSize: 26, color: "var(--accent)", fontWeight: 700 }}>
-        표심 · Pyosim
-      </div>
-
       {party ? (
-        <div className="card" style={{ marginTop: 16, padding: 24 }}>
+        <div className="card card-emphasis" style={{ marginTop: 8, padding: 24 }}>
           <div className="muted" style={{ fontSize: 15 }}>
             나와 가장 많이 겹친 곳
           </div>
@@ -62,21 +58,30 @@ export default async function SharePage({ searchParams }: { searchParams: SP }) 
               display: "flex",
               alignItems: "center",
               gap: 12,
-              marginTop: 8,
+              marginTop: 10,
             }}
           >
             <span
-              style={{ width: 12, height: 40, background: color, borderRadius: 4, display: "inline-block" }}
+              style={{ width: 12, height: 44, background: color, borderRadius: 4, display: "inline-block" }}
             />
-            <span style={{ fontSize: 30, fontWeight: 700 }}>{party}</span>
+            <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>
+              {party}
+            </span>
           </div>
-          <div style={{ fontSize: 52, fontWeight: 700, color }}>{rate}%</div>
+          <div
+            className="numeral"
+            style={{ fontSize: 56, lineHeight: 1.1, color, marginTop: 4 }}
+          >
+            {rate}%
+          </div>
           <div className="muted" style={{ fontSize: 13 }}>
             {n}문항 응답 · 실제 국회 표결 일치도
           </div>
         </div>
       ) : (
-        <p style={{ marginTop: 16 }}>실제 국회 표결로 내 정치성향을 확인해 보세요.</p>
+        <p style={{ marginTop: 16, fontSize: 17 }}>
+          실제 국회 표결로 내 정치성향을 확인해 보세요.
+        </p>
       )}
 
       <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 16 }}>

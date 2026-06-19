@@ -67,16 +67,29 @@ export default function ResultPage() {
 
   return (
     <main>
-      <h1 style={{ fontSize: 22 }}>내 표심 결과</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 12 }}>내 표심 결과</h1>
 
-      {/* 개인 요약 — 중립 서술 */}
+      {/* 개인 요약 — 중립 서술 (정당색은 라벨과 함께 작은 점으로만) */}
       {top && (
-        <div className="card" style={{ background: "var(--surface)" }}>
-          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6 }}>
+        <div className="card card-emphasis">
+          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.65 }}>
             답한 <b>{result.answered}문항</b> 기준, 실제 표결이 내 생각과 가장
             많이 겹친 곳은{" "}
-            <b style={{ color: top.color_hex ?? undefined }}>{top.party}</b>{" "}
-            <b>({Math.round(top.match_rate * 100)}%)</b>이에요.
+            <span
+              aria-hidden
+              style={{
+                display: "inline-block",
+                width: 9,
+                height: 9,
+                borderRadius: 3,
+                background: top.color_hex ?? "var(--ink-400)",
+                marginRight: 4,
+                verticalAlign: "baseline",
+              }}
+            />
+            <b>{top.party}</b>{" "}
+            <b className="numeral">{Math.round(top.match_rate * 100)}%</b>
+            이에요.
             {result.skipped > 0 && (
               <span className="muted"> · &lsquo;모름&rsquo; {result.skipped}문항 제외</span>
             )}
@@ -104,8 +117,8 @@ export default function ResultPage() {
       <h3 style={{ marginTop: 28 }}>문항별 — 내 답 vs 실제 표결</h3>
       {result.per_question.map((q) => (
         <div className="card" key={q.question_id}>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{q.issue}</div>
-          <div style={{ fontWeight: 600, margin: "4px 0 8px" }}>{q.body}</div>
+          <span className="chip">{q.issue}</span>
+          <div style={{ fontWeight: 600, margin: "10px 0 8px" }}>{q.body}</div>
           <div style={{ fontSize: 14 }}>
             내 선택:{" "}
             <b>

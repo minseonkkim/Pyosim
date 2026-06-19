@@ -45,7 +45,7 @@ export async function GET(req: Request) {
           fontFamily: "NotoKR",
         }}
       >
-        <div style={{ display: "flex", fontSize: 34, color: "#152484", fontWeight: 700 }}>
+        <div style={{ display: "flex", fontSize: 34, color: "#18171D", fontWeight: 700 }}>
           표심 · Pyosim
         </div>
 

@@ -35,7 +35,7 @@ export default function PartyChart({ data }: { data: PartyMatch[] }) {
           width={84}
           tickLine={false}
           axisLine={false}
-          tick={{ fontSize: 13, fill: "#1a1a1a" }}
+          tick={{ fontSize: 13, fill: "#18171D" }}
         />
         <Bar dataKey="pct" radius={[4, 4, 4, 4]} isAnimationActive={false}>
           {rows.map((r) => (
@@ -45,7 +45,7 @@ export default function PartyChart({ data }: { data: PartyMatch[] }) {
             dataKey="pct"
             position="right"
             formatter={(v: number) => `${v}%`}
-            style={{ fontSize: 13, fontWeight: 700, fill: "#1a1a1a" }}
+            style={{ fontSize: 13, fontWeight: 700, fill: "#18171D" }}
           />
         </Bar>
       </BarChart>

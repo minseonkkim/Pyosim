@@ -4,9 +4,24 @@ import Link from "next/link";
 export default function Home() {
   return (
     <main>
-      <h1 style={{ marginBottom: 4 }}>표심 · Pyosim</h1>
-      <p style={{ color: "var(--muted)", marginTop: 0 }}>Where do you stand?</p>
-      <p style={{ fontSize: 17, lineHeight: 1.6 }}>
+      <span className="chip" style={{ marginTop: 8 }}>
+        실제 국회 표결 기반
+      </span>
+
+      <h1
+        style={{
+          fontSize: 34,
+          lineHeight: 1.25,
+          letterSpacing: "-0.03em",
+          margin: "16px 0 0",
+        }}
+      >
+        내 정치성향,
+        <br />
+        2분이면 알아요
+      </h1>
+
+      <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--ink-700)" }}>
         정치 용어는 하나도 없습니다. 일상 속 선택 8가지에 답하면, 실제 국회
         표결과 내 생각이 얼마나 닮았는지 보여드려요.
       </p>
@@ -19,8 +34,8 @@ export default function Home() {
         style={{
           marginTop: 28,
           paddingLeft: 18,
-          fontSize: 14,
-          lineHeight: 1.8,
+          fontSize: 14.5,
+          lineHeight: 1.9,
           color: "var(--muted)",
         }}
       >

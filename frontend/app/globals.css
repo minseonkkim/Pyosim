@@ -1,11 +1,92 @@
+/* 표심 · Pyosim 디자인 시스템 — docs/디자인_시스템.md
+   브랜드 = Pyo Ink(무채색). 컬러는 정당 데이터(차트)에서만 등장. */
+
 :root {
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --muted: #666;
-  --accent: #152484;
-  --border: #e5e7eb;
-  --surface: #f7f8fa;
-  --radius: 12px;
+  /* 브랜드 (Pyo Ink — 무채색) */
+  --ink-950: #0e0d12;
+  --ink-900: #18171d;
+  --ink-800: #2a2932;
+  --ink-700: #3d3b45;
+  --ink-600: #56535f;
+  --ink-500: #6e6b77;
+  --ink-400: #9794a0;
+  --ink-300: #c7c5ce;
+  --ink-200: #e4e2e9;
+  --ink-100: #f0eff3;
+  --ink-50: #f7f7fa;
+  --white: #ffffff;
+  --ink-panel: linear-gradient(160deg, #2a2932 0%, #0e0d12 100%);
+
+  /* 시맨틱 (기능 전용, 최소 사용) */
+  --success: #138a5e;
+  --warning: #b36b00;
+  --danger: #c7314f;
+  --info: #3d3b45;
+
+  /* 역할 별칭 — 컴포넌트는 이걸 참조 */
+  --bg: var(--ink-50);
+  --surface: var(--white);
+  --fg: var(--ink-900);
+  --muted: var(--ink-500);
+  --border: var(--ink-200);
+  --primary: var(--ink-900);
+  --primary-strong: #000000;
+  --on-primary: var(--white);
+
+  /* 간격 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* 라운드 */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* 그림자·링 */
+  --shadow-sm: 0 1px 2px rgba(14, 13, 18, 0.06);
+  --shadow-md: 0 4px 16px rgba(14, 13, 18, 0.08);
+  --shadow-lg: 0 12px 32px rgba(14, 13, 18, 0.16);
+
+  /* 모션 */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+}
+
+[data-theme="dark"] {
+  --bg: #0e0d12;
+  --surface: #18171d;
+  --fg: #f0eff3;
+  --muted: #9794a0;
+  --border: #2a2932;
+  --primary: #ffffff;
+  --primary-strong: #f0eff3;
+  --on-primary: var(--ink-900);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0d12;
+    --surface: #18171d;
+    --fg: #f0eff3;
+    --muted: #9794a0;
+    --border: #2a2932;
+    --primary: #ffffff;
+    --primary-strong: #f0eff3;
+    --on-primary: var(--ink-900);
+  }
 }
 
 * {
@@ -18,50 +99,124 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo",
-    "Malgun Gothic", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, system-ui, -apple-system,
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 15.5px;
+  line-height: 1.55;
+  font-weight: 450;
+  word-break: keep-all;
+  line-break: strict;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── 앱 셸 ── */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 var(--space-5);
+  max-width: 640px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+}
+.wordmark {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--fg);
+  text-decoration: none;
 }
 
 main {
   max-width: 640px;
   margin: 0 auto;
-  padding: 24px 20px;
+  padding: var(--space-4) var(--space-5) var(--space-12);
+}
+
+/* ── 타이포 ── */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+  line-height: 1.32;
+}
+h1 {
+  font-size: 27px;
+  font-weight: 800;
+}
+h2 {
+  font-size: 21px;
+  font-weight: 700;
+}
+h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.numeral {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 a {
-  color: var(--accent);
+  color: var(--fg);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink-900);
+  outline-offset: 2px;
 }
 
 /* ── 공용 버튼 ── */
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   padding: 14px 22px;
+  min-height: 52px;
+  font-family: inherit;
   font-size: 16px;
-  font-weight: 600;
-  color: #fff;
-  background: var(--accent);
+  font-weight: 700;
+  color: var(--on-primary);
+  background: var(--primary);
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   cursor: pointer;
   text-align: center;
   text-decoration: none;
-  transition: opacity 0.15s ease;
+  transition: background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 .btn:hover {
-  opacity: 0.9;
+  background: var(--primary-strong);
+}
+.btn:active {
+  transform: scale(0.98);
 }
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+.btn:disabled:active {
+  transform: none;
+}
 .btn-ghost {
   color: var(--fg);
-  background: var(--surface);
+  background: var(--ink-100);
   border: 1px solid var(--border);
 }
+.btn-ghost:hover {
+  background: var(--ink-200);
+}
 .btn-block {
-  display: block;
+  display: flex;
   width: 100%;
 }
 
@@ -70,79 +225,120 @@ a {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 16px;
-  margin-bottom: 12px;
-  background: #fff;
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  font-family: inherit;
+  color: var(--fg);
+  background: var(--surface);
   border: 1.5px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-spring);
 }
 .choice:hover {
-  border-color: var(--accent);
+  border-color: var(--ink-400);
+}
+.choice:active {
+  transform: scale(0.985);
 }
 .choice.selected {
-  border-color: var(--accent);
-  background: #f3f5ff;
+  border-color: var(--ink-900);
+  background: var(--ink-100);
+  box-shadow: inset 3px 0 0 var(--ink-900);
 }
 .choice-label {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-2);
 }
 .choice-row {
   font-size: 13.5px;
   line-height: 1.45;
   color: var(--muted);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 .choice-row b {
-  color: var(--fg);
+  color: var(--ink-700);
   font-weight: 600;
 }
 
 /* ── 진행률 바 ── */
 .progress {
   height: 6px;
-  background: var(--border);
-  border-radius: 999px;
+  background: var(--ink-200);
+  border-radius: var(--radius-full);
   overflow: hidden;
-  margin: 8px 0 20px;
+  margin: var(--space-2) 0 var(--space-5);
 }
 .progress > span {
   display: block;
   height: 100%;
-  background: var(--accent);
-  transition: width 0.25s ease;
+  background: var(--ink-900);
+  border-radius: var(--radius-full);
+  transition: width var(--dur-base) var(--ease-out);
 }
 
 /* ── 카드/박스 ── */
 .card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 14px;
-  background: #fff;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.card-emphasis {
+  background: var(--ink-100);
+  border-color: transparent;
 }
 .muted {
   color: var(--muted);
 }
+
+/* ── 쟁점 칩 ── */
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-700);
+  background: var(--ink-100);
+  border-radius: var(--radius-full);
+}
+
+/* ── 고지문 ── */
 .disclaimer {
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--muted);
-  background: var(--surface);
+  background: var(--ink-50);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin: 16px 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
 }
+
+/* ── 출처 접기 ── */
 details.source {
-  margin-top: 10px;
+  margin-top: var(--space-3);
   font-size: 13px;
   color: var(--muted);
 }
 details.source summary {
   cursor: pointer;
   user-select: none;
+}
+details.source a {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
