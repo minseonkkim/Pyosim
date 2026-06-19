@@ -3,6 +3,9 @@
   --fg: #1a1a1a;
   --muted: #666;
   --accent: #152484;
+  --border: #e5e7eb;
+  --surface: #f7f8fa;
+  --radius: 12px;
 }
 
 * {
@@ -24,4 +27,122 @@ main {
   max-width: 640px;
   margin: 0 auto;
   padding: 24px 20px;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* ── 공용 버튼 ── */
+.btn {
+  display: inline-block;
+  padding: 14px 22px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* ── 선택지 카드 (테스트 Ⓐ/Ⓑ) ── */
+.choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.choice:hover {
+  border-color: var(--accent);
+}
+.choice.selected {
+  border-color: var(--accent);
+  background: #f3f5ff;
+}
+.choice-label {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.choice-row {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.choice-row b {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ── 진행률 바 ── */
+.progress {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0 20px;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+/* ── 카드/박스 ── */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  background: #fff;
+}
+.muted {
+  color: var(--muted);
+}
+.disclaimer {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 16px 0;
+}
+details.source {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+details.source summary {
+  cursor: pointer;
+  user-select: none;
 }

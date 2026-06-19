@@ -1,31 +1,36 @@
-// Phase 1-3 에서 실제 테스트 진입 화면으로 대체.
-// 진입은 "나"에서 시작 — 정치 용어 0, 법안목록 X (기획서 설계 원칙).
+// 진입 화면 — "나"에서 시작. 정치 용어 0, 법안목록 X (기획서 설계 원칙).
+import Link from "next/link";
 
 export default function Home() {
   return (
     <main>
-      <h1>표심 · Pyosim</h1>
-      <p style={{ color: "var(--muted)" }}>Where do you stand?</p>
-      <p>
-        실제 국회 표결 데이터로 내 정치 성향을 확인하고, 지금 진행 중인 법안에
-        직접 의견까지.
+      <h1 style={{ marginBottom: 4 }}>표심 · Pyosim</h1>
+      <p style={{ color: "var(--muted)", marginTop: 0 }}>Where do you stand?</p>
+      <p style={{ fontSize: 17, lineHeight: 1.6 }}>
+        정치 용어는 하나도 없습니다. 일상 속 선택 8가지에 답하면, 실제 국회
+        표결과 내 생각이 얼마나 닮았는지 보여드려요.
       </p>
-      <button
+
+      <Link href="/test" className="btn btn-block" style={{ marginTop: 20 }}>
+        내 정치성향 알아보기 →
+      </Link>
+
+      <ul
         style={{
-          marginTop: 16,
-          padding: "12px 20px",
-          fontSize: 16,
-          color: "#fff",
-          background: "var(--accent)",
-          border: "none",
-          borderRadius: 8,
-          cursor: "pointer",
+          marginTop: 28,
+          paddingLeft: 18,
+          fontSize: 14,
+          lineHeight: 1.8,
+          color: "var(--muted)",
         }}
       >
-        내 정치성향 알아보기
-      </button>
-      <p style={{ marginTop: 24, fontSize: 13, color: "var(--muted)" }}>
-        Phase 0 — 기반 공사 완료. 테스트 화면은 Phase 1 에서 구현됩니다.
+        <li>약 2분, 8문항 · 모바일에서 편하게</li>
+        <li>각 문항은 실제 발의·표결된 법안이 출처예요 (▼로 확인)</li>
+        <li>특정 정당을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
+      </ul>
+
+      <p style={{ marginTop: 24, fontSize: 12.5, color: "var(--muted)" }}>
+        ⚠️ 현재 문항은 외부 교차검토 전 <b>초안</b>입니다(프로토타입).
       </p>
     </main>
   );
