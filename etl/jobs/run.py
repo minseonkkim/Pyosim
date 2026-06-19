@@ -87,6 +87,20 @@ def _vote_records(args) -> None:
     print(f"vote_records 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("proposers")
+def _proposers(args) -> None:
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_proposers(
+            session, _build_client(), age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"proposers 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="표심 ETL 잡 러너")
     parser.add_argument("--job", required=True, help=f"실행할 잡. 등록됨: {', '.join(JOBS)}")

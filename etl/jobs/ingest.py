@@ -1,9 +1,10 @@
-"""수집 잡 — 열린국회정보 → DB 적재 (Phase 1-2).
+"""수집 잡 — 열린국회정보 → DB 적재 (Phase 1-1~1-2).
 
 잡:
   members       현직 22대 의원 300명        nwvrqwxyaytdsfvhu  → Party, Person
   bills         본회의 표결된 의안 + 집계     ncocpgfiaoituanbr  → Bill, Vote
   vote_records  의안별 의원 찬/반/기권        nojepdqqaweusdfbi  → VoteRecord
+  proposers     발의법률안 + 대표발의자 연결   nzmimeepazxkubdpn  → Bill(+proposer_id)
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
@@ -22,6 +23,7 @@ from jobs.db import Bill, Party, Person, Vote, VoteChoice, VoteRecord
 SVC_MEMBERS = "nwvrqwxyaytdsfvhu"  # 현직 의원
 SVC_BILLS = "ncocpgfiaoituanbr"  # 의안별 표결현황(집계)
 SVC_VOTE_RECORDS = "nojepdqqaweusdfbi"  # 의원별 본회의 표결정보
+SVC_PROPOSED = "nzmimeepazxkubdpn"  # 발의법률안 (대표발의자 RST_MONA_CD)
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
@@ -224,4 +226,68 @@ def run_vote_records(
         "records": n_rec,
         "skipped_member": n_skip_member,
         "skipped_choice": n_skip_choice,
+    }
+
+
+# ───────────────────────── proposers (발의자 연결) ─────────────────────────
+def run_proposers(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """발의법률안 적재 + 대표발의자 연결 (Phase 1-1).
+
+    - Bill 을 의안번호로 upsert(표결 안 된 계류 의안 포함 → 의원 '대표발의' 목록을 채움).
+    - 대표발의자는 `RST_MONA_CD`(의원코드) → `Person.assembly_member_code` 로 직접 연결.
+      (이름 매칭 불필요 → 동명이인 오류 없음.)
+    - 우리 명단에 없는 발의자(전직·정부발의 등)는 proposer 미연결로 둠(임의 생성 X).
+    🟡 기존 값(표결 잡이 채운 committee/status/likms 등)은 덮어쓰지 않음(`or` 보존).
+    """
+    persons = {
+        p.assembly_member_code: p
+        for p in session.scalars(select(Person)).all()
+        if p.assembly_member_code
+    }
+    if not persons:
+        return {"error": "의원 데이터 없음 — members 잡 먼저 실행"}
+
+    bills = {b.bill_no: b for b in session.scalars(select(Bill)).all()}
+    n_new = n_upd = n_linked = n_nolink = 0
+
+    for row in client.iter_rows(SVC_PROPOSED, params={"AGE": age}, max_rows=limit):
+        bill_no = (row.get("BILL_NO") or "").strip()
+        if not bill_no:
+            continue
+        link = row.get("DETAIL_LINK")
+        bill = bills.get(bill_no)
+        if bill is None:
+            bill = Bill(bill_no=bill_no, title=row.get("BILL_NAME") or "")
+            bills[bill_no] = bill
+            n_new += 1
+            if not dry_run:
+                session.add(bill)
+        else:
+            n_upd += 1
+        # 기존 값 보존(표결 잡이 더 정확). 비어 있을 때만 채움.
+        bill.title = bill.title or (row.get("BILL_NAME") or "")
+        bill.assembly_bill_id = bill.assembly_bill_id or row.get("BILL_ID")
+        bill.committee = bill.committee or (row.get("COMMITTEE") or None)
+        bill.status = bill.status or (row.get("PROC_RESULT") or None)
+        bill.proposed_date = bill.proposed_date or _parse_date(row.get("PROPOSE_DT"))
+        bill.likms_url = bill.likms_url or link
+        bill.source_url = bill.source_url or link
+        bill.last_verified = _now()
+
+        code = (row.get("RST_MONA_CD") or "").strip()
+        proposer = persons.get(code)
+        if proposer is not None:
+            bill.proposer_id = proposer.id  # 대표발의자 연결(항상 갱신)
+            n_linked += 1
+        else:
+            n_nolink += 1
+
+    if not dry_run:
+        session.commit()
+    return {
+        "new_bill": n_new, "updated_bill": n_upd,
+        "linked": n_linked, "no_person": n_nolink,
     }

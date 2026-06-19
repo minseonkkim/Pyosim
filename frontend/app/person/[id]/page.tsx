@@ -70,7 +70,7 @@ export default function PersonPage() {
       {/* 요약 지표 */}
       <div style={{ display: "flex", gap: 10, margin: "16px 0" }}>
         <Stat label="출석률" value={p.attendance_rate != null ? `${Math.round(p.attendance_rate * 100)}%` : "—"} />
-        <Stat label="대표발의" value={`${p.proposed_bills.length}건`} />
+        <Stat label="대표발의" value={`${p.proposed_count}건`} />
         <Stat label="표결 참여" value={vs.total ? `${vs.total}건` : "—"} />
       </div>
 
@@ -100,6 +100,11 @@ export default function PersonPage() {
             )}
           </div>
         ))
+      )}
+      {p.proposed_count > p.proposed_bills.length && (
+        <p className="muted" style={{ fontSize: 13 }}>
+          최근 {p.proposed_bills.length}건 표시 · 외 {p.proposed_count - p.proposed_bills.length}건 더
+        </p>
       )}
 
       {/* 본회의 표결 참여 */}

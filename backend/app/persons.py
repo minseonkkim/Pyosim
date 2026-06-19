@@ -81,7 +81,8 @@ class PersonProfile(BaseModel):
     attendance_rate: float | None
     profile_source_url: str | None
     last_verified: datetime | None
-    proposed_bills: list[BillBrief]  # 대표발의 법안 → 법안 페이지로 연결(그물망)
+    proposed_count: int  # 대표발의 총 건수
+    proposed_bills: list[BillBrief]  # 최근 일부(그물망) — 법안 페이지로 연결
     vote_summary: VoteSummary  # 본회의 표결 참여 집계
     criminal_records: list[CriminalOut]
     notice: str
@@ -122,11 +123,13 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
     if person is None:
         raise HTTPException(status_code=404, detail="해당 정치인을 찾을 수 없습니다.")
 
-    proposed = db.scalars(
+    PROPOSED_LIMIT = 20  # 다발 발의자 대비 — 최근 N건만 노출, 총건수는 별도
+    proposed_all = db.scalars(
         select(Bill)
         .where(Bill.proposer_id == pid)
         .order_by(Bill.proposed_date.desc().nullslast(), Bill.id.desc())
     ).all()
+    proposed = proposed_all[:PROPOSED_LIMIT]
 
     counts: Counter = Counter()
     for (choice,) in db.execute(
@@ -150,6 +153,7 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
         attendance_rate=person.attendance_rate,
         profile_source_url=person.profile_source_url,
         last_verified=person.last_verified,
+        proposed_count=len(proposed_all),
         proposed_bills=[
             BillBrief(
                 id=b.id, bill_no=b.bill_no, title=b.title,

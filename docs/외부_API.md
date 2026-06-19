@@ -48,7 +48,7 @@
 | `ncocpgfiaoituanbr` | 의안별 표결현황(본회의 집계) | 1,596     | `AGE`                | `Bill`, `Vote`(집계)       |
 | `nojepdqqaweusdfbi` | 의원별 본회의 표결정보      | BILL당 ~285 | `AGE`, `BILL_ID`   | `VoteRecord`               |
 | `ALLNAMEMBER`       | 국회의원 인적사항(역대 통합) | 3,295     | —                    | (역대·사진 보강용, 추후)   |
-| `nzmimeepazxkubdpn` | 국회의원 발의법률안        | 17,533    | `AGE`                | (공동발의·발의자, Phase 2) |
+| `nzmimeepazxkubdpn` | 국회의원 발의법률안        | 17,567    | `AGE`                | `Bill`(+`proposer_id`) — 발의자 연결 ✅ |
 | `TVBPMBILL11`       | 의안검색(전체)             | 18,795    | `AGE`                | (의안 전수, 보조)          |
 
 주요 필드 매핑:
@@ -56,6 +56,7 @@
 - **명단**(`nwvrqwxyaytdsfvhu`): `HG_NM`→이름, `POLY_NM`→정당, `ORIG_NM`→지역구, `MONA_CD`→`Person.assembly_member_code`(표결 매핑 키)
 - **표결현황**(`ncocpgfiaoituanbr`): `BILL_NO`→의안번호, `BILL_ID`→`Bill.assembly_bill_id`(PRC_…), `BILL_NAME`→제목, `PROC_RESULT_CD`→상태, `MEMBER/VOTE/YES/NO/BLANK_TCNT`→`Vote` 집계, `LINK_URL`→likms 1차 출처
 - **의원별 표결**(`nojepdqqaweusdfbi`): `MONA_CD`→의원 매핑, `RESULT_VOTE_MOD`(찬성/반대/기권/불참)→`VoteRecord.choice`
+- **발의법률안**(`nzmimeepazxkubdpn`): `BILL_NO`→의안번호(Bill upsert), `RST_MONA_CD`→대표발의자(`Person.assembly_member_code` 직접 연결, 이름매칭 불필요), `RST_PROPOSER`→대표발의자명, `PUBL_MONA_CD`/`PUBL_PROPOSER`→공동발의(Phase 2-5), `DETAIL_LINK`→likms 출처. 표결 안 된 계류 의안도 포함 → 의원 '대표발의' 목록을 채움
 
 > ⚠️ **알려진 데이터 불일치**: 집계(`ncocpgfiaoituanbr`)의 `YES_TCNT` 와 의원별 기록(`nojepdqqaweusdfbi`) 찬성 합계가 의안에 따라 소폭 다를 수 있음(예: 232 vs 218). 정부 두 API 간 차이 — 결과 표시 시 집계=헤드라인 수치, 의원별 기록=정당별 분해로 분리 사용하고 각주 처리. (로드맵 1-2 "매핑 정합성 검증")
 
@@ -68,6 +69,7 @@
 python -m jobs.run --job members              # 현직 의원 300
 python -m jobs.run --job bills                # 표결된 의안 + 집계 1,596
 python -m jobs.run --job vote_records --limit 50   # 의원별 찬반 (rate limit 대응 상한)
+python -m jobs.run --job proposers           # 발의법률안 + 대표발의자 연결 (~17.5k)
 python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 ```
 

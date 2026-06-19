@@ -105,6 +105,7 @@ export interface PersonProfile {
   attendance_rate: number | null;
   profile_source_url: string | null;
   last_verified: string | null;
+  proposed_count: number;
   proposed_bills: BillBrief[];
   vote_summary: VoteSummary;
   criminal_records: CriminalRecordOut[];
