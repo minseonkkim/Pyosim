@@ -9,9 +9,6 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     env: str = "local"
 
-    # 어드민 검토(Phase 2-3) — 빈 값이면 어드민 API 비활성(전부 401).
-    admin_token: str = ""
-
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
