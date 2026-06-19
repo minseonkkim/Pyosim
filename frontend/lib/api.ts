@@ -58,10 +58,77 @@ export interface ResultsResponse {
   method_note: string;
 }
 
+// ───────── 정치인 프로필 (Phase 1-2, 그물망 '사람' 축) ─────────
+export interface PartyBrief {
+  name: string;
+  color_hex: string | null;
+}
+
+export interface PersonListItem {
+  id: number;
+  name: string;
+  party: PartyBrief | null;
+  district: string | null;
+  photo_url: string | null;
+}
+
+export interface BillBrief {
+  id: number;
+  bill_no: string;
+  title: string;
+  status: string | null;
+  likms_url: string | null;
+}
+
+export interface CriminalRecordOut {
+  charge: string;
+  sentence: string | null;
+  date_sentenced: string | null;
+  is_final: boolean | null;
+  source_url: string | null;
+}
+
+export interface VoteSummary {
+  yes: number;
+  no: number;
+  abstain: number;
+  absent: number;
+  total: number;
+}
+
+export interface PersonProfile {
+  id: number;
+  name: string;
+  party: PartyBrief | null;
+  district: string | null;
+  photo_url: string | null;
+  attendance_rate: number | null;
+  profile_source_url: string | null;
+  last_verified: string | null;
+  proposed_bills: BillBrief[];
+  vote_summary: VoteSummary;
+  criminal_records: CriminalRecordOut[];
+  notice: string;
+}
+
 async function getJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
+}
+
+export function fetchPersons(opts: { party?: string; q?: string } = {}): Promise<
+  PersonListItem[]
+> {
+  const p = new URLSearchParams();
+  if (opts.party) p.set("party", opts.party);
+  if (opts.q) p.set("q", opts.q);
+  const qs = p.toString();
+  return getJSON<PersonListItem[]>(`/api/persons${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchPerson(id: number): Promise<PersonProfile> {
+  return getJSON<PersonProfile>(`/api/persons/${id}`);
 }
 
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.

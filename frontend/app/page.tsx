@@ -33,6 +33,14 @@ export default function Home() {
         내 정치성향 알아보기 →
       </Link>
 
+      <Link
+        href="/persons"
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: 10 }}
+      >
+        국회의원 둘러보기 →
+      </Link>
+
       <ul
         style={{
           marginTop: 28,

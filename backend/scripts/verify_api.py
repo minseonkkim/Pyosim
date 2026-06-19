@@ -112,6 +112,37 @@ def main() -> int:
         assert "삭제하라는_임의이벤트" not in names
         assert len(names) == 4
 
+    # ── 정치인 프로필 (Phase 1-2) ──
+    print("\n── GET /api/persons (목록) ──")
+    r = client.get("/api/persons")
+    assert r.status_code == 200, r.text
+    persons = r.json()
+    print(f"  의원 {len(persons)}명 (데모 가상 4명 기대)")
+    assert len(persons) >= 4, persons
+    assert all(p["name"].startswith("[데모]") for p in persons)  # 데모 환경: 가상 인물만
+
+    print("\n── GET /api/persons?q=이두리 ──")
+    r = client.get("/api/persons", params={"q": "이두리"})
+    hit = r.json()
+    assert len(hit) == 1, hit
+    pid = hit[0]["id"]
+
+    print("\n── GET /api/persons/{id} (프로필 상세) ──")
+    r = client.get(f"/api/persons/{pid}")
+    assert r.status_code == 200, r.text
+    prof = r.json()
+    print(f"  {prof['name']} · {prof['party']['name']} · {prof['district']}")
+    print(f"    출석률={prof['attendance_rate']} 대표발의={len(prof['proposed_bills'])}건 "
+          f"전과={len(prof['criminal_records'])}건")
+    assert prof["notice"], "🟡 중립 고지 동봉 필요"
+    assert prof["criminal_records"], "데모 이두리에 가상 전과 1건 기대"
+    # 🟡 전과는 동일 양식 필드를 갖춰야(출처 필드 포함)
+    assert "source_url" in prof["criminal_records"][0]
+    assert "vote_summary" in prof and prof["vote_summary"]["total"] == 0  # 데모: 표결기록 없음
+
+    print("\n── 404 (없는 의원) ──")
+    assert client.get("/api/persons/999999").status_code == 404
+
     print("\n✅ API end-to-end 검증 통과")
     return 0
 
