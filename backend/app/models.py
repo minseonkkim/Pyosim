@@ -213,7 +213,8 @@ class Question(Base):
     bill_id: Mapped[int | None] = mapped_column(ForeignKey("bill.id"), index=True)  # 문항↔법안 매핑
     source_note: Mapped[str | None] = mapped_column(Text)  # "원래 어떤 법안인지" 출처 메모
 
-    # 반자동 승인 흐름
+    # 반자동 승인 흐름 (Phase 2-3)
+    # 흐름: 초안 → 검토중 → 승인 → 아카이브. '반려'는 아카이브 + review_note('[반려] …')로 기록.
     status: Mapped[QuestionStatus] = mapped_column(
         Enum(QuestionStatus), default=QuestionStatus.초안, nullable=False, index=True
     )
@@ -222,6 +223,7 @@ class Question(Base):
     )
     approved_by: Mapped[str | None] = mapped_column(String(100))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(Text)  # 검토 메모/반려 사유 (👤 사람 검토 기록)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

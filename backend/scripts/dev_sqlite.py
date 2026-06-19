@@ -29,6 +29,12 @@ from app import seed, seed_demo, seed_questions  # noqa: E402
 
 
 def main() -> None:
+    # create_all 은 '없는 테이블'만 만들고 기존 테이블에 컬럼을 추가하지 못한다.
+    # 모델이 바뀌면(예: review_note 추가) 낡은 dev DB와 어긋나 'no such column' 발생.
+    # → SQLite(개발용)일 때만 drop_all 로 스키마를 모델과 강제 동기화한다(시드 전용이라 안전).
+    #   Postgres 등 실제 DB는 절대 drop 하지 않는다 — 그쪽은 alembic 마이그레이션 사용.
+    if engine.url.get_backend_name() == "sqlite":
+        Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     seed.run()
     seed_demo.run()
