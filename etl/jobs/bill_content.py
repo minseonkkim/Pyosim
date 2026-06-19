@@ -1,12 +1,13 @@
 """의안 본문 수집 — likms 의안원문(HWP) PrvText 에서 제안이유·주요내용 추출 (Phase 1-3 보완).
 
 열린국회정보 OpenAPI 엔 본문이 없어, 의안정보시스템(likms)의 '의안원문' HWP 를 받아
-미리보기텍스트(PrvText) 스트림(UTF-16LE 평문)에서 제안이유/주요내용을 뽑는다.
+**BodyText 섹션(전체 본문)**에서 제안이유/주요내용을 뽑는다.
+(PrvText 미리보기는 ~1024자에서 잘려 본문엔 부적합 → BodyText 레코드를 직접 파싱.)
 
 수집 흐름(라이브 역추적 확정):
   1) billDetail.do?billId=  방문 → 세션 쿠키(JSESSIONID)
   2) downloadDtlZip.do  POST(billId, docChkList=의안원문) → zip
-  3) zip 안의 .hwp → olefile 로 PrvText 스트림 디코드 → 제안이유/주요내용 파싱
+  3) zip 안의 .hwp → olefile 로 OLE 열기 → BodyText/Section* 레코드 파싱 → 제안이유/주요내용
 
 🟡 원문 그대로 저장(요약·판정 없음). 출처 = likms billDetail. AI 요약(좋은점/문제점)은 별도 단계.
 ⚠️ likms 스크래핑이므로 예의상 sleep + 필요한 의안만(표결/featured) 선별 수집 권장.
@@ -16,10 +17,12 @@ from __future__ import annotations
 import http.cookiejar
 import io
 import re
+import struct
 import time
 import urllib.parse
 import urllib.request
 import zipfile
+import zlib
 from datetime import datetime, timezone
 
 import olefile
@@ -56,13 +59,58 @@ def download_uian_hwp(bill_id: str) -> bytes | None:
     return z.read(hwps[0]) if hwps else None
 
 
-def extract_prvtext(hwp: bytes) -> str:
-    """HWP5(OLE) 의 PrvText(미리보기 평문, UTF-16LE) 스트림 → 텍스트."""
+# HWP5 PARA_TEXT 안의 8-wchar(16바이트) 인라인 컨트롤 문자 코드
+_INLINE_CTRL = {1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}
+_HWPTAG_PARA_TEXT = 0x43
+
+
+def _decode_paratext(rec: bytes) -> str:
+    """PARA_TEXT 레코드(UTF-16LE + 인라인 컨트롤) → 텍스트."""
+    out: list[str] = []
+    j, n = 0, len(rec)
+    while j + 1 < n:
+        code = rec[j] | (rec[j + 1] << 8)
+        if code in _INLINE_CTRL:
+            j += 16  # 8 wchar 컨트롤(표·그림 등) 건너뜀
+        elif code in (10, 13):
+            out.append("\n")
+            j += 2
+        elif code < 32:
+            j += 2  # 기타 제어문자 무시
+        else:
+            out.append(chr(code))
+            j += 2
+    return "".join(out)
+
+
+def extract_bodytext(hwp: bytes) -> str:
+    """HWP5(OLE) 의 BodyText 섹션에서 **전체 본문** 추출.
+
+    PrvText(미리보기)는 ~1024자에서 잘리므로 본문엔 부적합 → BodyText 레코드를 직접 파싱.
+    """
     ole = olefile.OleFileIO(io.BytesIO(hwp))
     try:
-        if not ole.exists("PrvText"):
-            return ""
-        return ole.openstream("PrvText").read().decode("utf-16-le", "replace")
+        compressed = bool(ole.openstream("FileHeader").read()[36] & 1)
+        sections = sorted("/".join(e) for e in ole.listdir() if e and e[0] == "BodyText")
+        parts: list[str] = []
+        for sec in sections:
+            data = ole.openstream(sec).read()
+            if compressed:
+                data = zlib.decompress(data, -15)
+            i, n = 0, len(data)
+            while i + 4 <= n:
+                header = struct.unpack_from("<I", data, i)[0]
+                i += 4
+                tag = header & 0x3FF
+                size = (header >> 20) & 0xFFF
+                if size == 0xFFF:
+                    size = struct.unpack_from("<I", data, i)[0]
+                    i += 4
+                rec = data[i : i + size]
+                i += size
+                if tag == _HWPTAG_PARA_TEXT:
+                    parts.append(_decode_paratext(rec))
+        return "\n".join(parts)
     finally:
         ole.close()
 
@@ -74,8 +122,12 @@ def _clean(s: str) -> str:
     return s.strip(" \n\r<>")
 
 
-# 본문 끝 경계(법안 본문/대비표 시작 신호) — 제안이유/주요내용 뒤에 법안 원문이 이어짐
-_END = re.compile(r"\n\s*법률\s*제|\n\s*신구조문|\n\s*부\s*칙")
+# 본문 끝 경계(법안 원문/대비표/부칙 시작) — 제안이유·주요내용 뒤에 법안 본문이 이어짐
+_END = re.compile(r"법률\s*제\s*[\d ]*호|구조문대비표|\n\s*부\s*칙")
+# 마커(`<>` 유무·공백 무관). 결합형 우선.
+_COMBINED = re.compile(r"<?\s*제안이유\s*및\s*주요\s*내용\s*>?")
+_REASON = re.compile(r"<?\s*제안이유\s*>?")
+_MAIN = re.compile(r"<?\s*주요\s*내용\s*>?")
 
 
 def _section_to_end(text: str, start: int) -> str | None:
@@ -85,26 +137,29 @@ def _section_to_end(text: str, start: int) -> str | None:
 
 
 def parse_reason_content(text: str) -> tuple[str | None, str | None]:
-    """PrvText → (제안이유, 주요내용). 두 형식 모두 처리.
+    """본문 → (제안이유, 주요내용). PrvText/BodyText, `<>` 유무 모두 처리.
 
-    - 결합형 `<제안이유 및 주요내용>`: 통째로 첫 필드에 담고 둘째는 None.
-    - 분리형 `<제안이유>` … `<주요내용>` …: 각각 분리.
+    - 결합형 '제안이유 및 주요내용': 통째로 첫 필드, 둘째 None.
+    - 분리형 '제안이유' … '주요내용' …: 각각 분리.
     마커 없으면 (None, None).
     """
     text = text.replace("\x00", "")
 
-    ci = text.find("<제안이유 및 주요내용>")
-    if ci >= 0:
-        return _section_to_end(text, ci + len("<제안이유 및 주요내용>")), None
+    cm = _COMBINED.search(text)
+    if cm:
+        return _section_to_end(text, cm.end()), None
 
     reason = main = None
-    ri = text.find("<제안이유>")
-    mi = text.find("<주요내용>")
-    if ri >= 0:
-        start = ri + len("<제안이유>")
-        reason = (_clean(text[start:mi]) or None) if mi >= 0 else _section_to_end(text, start)
-    if mi >= 0:
-        main = _section_to_end(text, mi + len("<주요내용>"))
+    rm = _REASON.search(text)
+    mm = _MAIN.search(text)
+    if rm:
+        start = rm.end()
+        if mm and mm.start() > rm.start():
+            reason = _clean(text[start : mm.start()]) or None
+        else:
+            reason = _section_to_end(text, start)
+    if mm:
+        main = _section_to_end(text, mm.end())
     return reason, main
 
 
@@ -131,7 +186,7 @@ def run_bill_content(
             hwp = download_uian_hwp(bill.assembly_bill_id)
             reason = main = None
             if hwp:
-                reason, main = parse_reason_content(extract_prvtext(hwp))
+                reason, main = parse_reason_content(extract_bodytext(hwp))
             if not dry_run:
                 bill.proposal_reason = reason
                 bill.main_content = main
