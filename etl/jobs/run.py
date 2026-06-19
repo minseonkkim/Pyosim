@@ -101,6 +101,21 @@ def _proposers(args) -> None:
     print(f"proposers 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("bill_content")
+def _bill_content(args) -> None:
+    # likms 의안원문(HWP)에서 제안이유·주요내용 수집 (API 아님 — 스크래핑이라 client 불필요)
+    from jobs import bill_content
+
+    session = _build_session()
+    try:
+        stats = bill_content.run_bill_content(
+            session, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"bill_content 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="표심 ETL 잡 러너")
     parser.add_argument("--job", required=True, help=f"실행할 잡. 등록됨: {', '.join(JOBS)}")

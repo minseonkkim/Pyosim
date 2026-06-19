@@ -5,3 +5,5 @@ pydantic-settings==2.7.0
 # DB 적재 시 backend 모델 재사용 (동일 DATABASE_URL)
 sqlalchemy==2.0.36
 psycopg[binary]==3.2.3
+# 의안원문 HWP(OLE) PrvText 파싱 — 제안이유·주요내용 추출
+olefile==0.47

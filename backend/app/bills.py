@@ -75,6 +75,8 @@ class BillDetail(BaseModel):
     status: str | None
     proposed_date: date | None
     likms_url: str | None
+    proposal_reason: str | None  # 제안이유(또는 제안이유 및 주요내용) — 의안원문 공식 텍스트
+    main_content: str | None  # 주요내용(분리형일 때)
     proposer: ProposerBrief | None
     vote: VoteAggregate | None  # 본회의 집계(있는 경우)
     party_breakdown: list[PartyVote]  # 정당별 찬반(의원별 기록 있을 때)
@@ -154,6 +156,7 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         id=bill.id, bill_no=bill.bill_no, title=bill.title,
         committee=bill.committee, status=bill.status,
         proposed_date=bill.proposed_date, likms_url=bill.likms_url,
+        proposal_reason=bill.proposal_reason, main_content=bill.main_content,
         proposer=proposer, vote=vote_out,
         party_breakdown=party_breakdown, voters=voters, funnel=funnel,
         notice=NOTICE,

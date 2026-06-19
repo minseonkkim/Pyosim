@@ -92,6 +92,19 @@ python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 - 포털상 일일 호출 한도가 적용됨(계정/서비스별). **정확한 한도는 마이페이지에서 확인 필요(⬜ TODO).**
 - 대응: 자체 DB 캐싱 + 배치 수집(1일 1회). (기획서 13장 리스크 대응)
 
+## 의안 본문 — likms 의안원문 (스크래핑, Phase 1-3 보완)
+
+> ⚠️ **OpenAPI 엔 제안이유·주요내용 본문이 없다**(의안검색·발의법률안·표결현황 모두 메타데이터만, 라이브 확인).
+> 본문은 의안정보시스템(likms) 의안원문 HWP 에만 있고 상세페이지는 JS 동적 로딩이라, **HWP 의 미리보기텍스트(`PrvText`) 스트림**에서 추출한다. (ETL `jobs/bill_content.py`, `--job bill_content`)
+
+수집 흐름(라이브 역추적 확정):
+1. `GET https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_…` → 세션 쿠키(JSESSIONID)
+2. `POST .../bill/bi/bill/detail/downloadDtlZip.do` (body: `billId`, `docChkList=의안원문`) → zip
+3. zip 내 `.hwp` → `olefile` 로 OLE 열기 → `PrvText` 스트림(UTF-16LE 평문) 디코드
+4. 마커 파싱: 결합형 `<제안이유 및 주요내용>` 또는 분리형 `<제안이유>`/`<주요내용>` → `Bill.proposal_reason`/`main_content`
+
+🟡 원칙: **공식 원문 그대로 저장**(요약·판정 없음), 출처=likms. 스크래핑이므로 sleep(0.4s)+필요 의안만 선별 수집. 비공식 경로라 likms 구조 변경 시 깨질 수 있음(robots/ToS 유의).
+
 ## 선관위 / 공공데이터포털 (미발급)
 
 - 발급처: https://www.data.go.kr (선관위 후보자 전과/재산, 선거구 데이터)

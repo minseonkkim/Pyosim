@@ -156,6 +156,8 @@ def main() -> int:
     assert len(bill["funnel"]) == 4 and bill["funnel"][0]["done"]  # 발의 done
     assert bill["notice"], "🟡 중립 고지 동봉 필요"
     assert bill["vote"] is None  # 데모: 본회의 표결 없음
+    # 본문 필드 노출(데모는 미수집이라 None 허용) — 실데이터는 ETL bill_content 로 채움
+    assert "proposal_reason" in bill and "main_content" in bill
     assert client.get("/api/bills/999999").status_code == 404
 
     print("\n✅ API end-to-end 검증 통과")

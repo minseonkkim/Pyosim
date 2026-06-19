@@ -63,6 +63,23 @@ export default function BillPage() {
           .join(" · ") || "처리 정보 없음"}
       </p>
 
+      {/* 제안이유·주요내용 — 의안원문 공식 텍스트 (🟡 요약·판정 없는 원문) */}
+      {(b.proposal_reason || b.main_content) && (
+        <section style={{ marginTop: 16 }}>
+          <h3 style={{ marginBottom: 8 }}>제안이유 및 주요내용</h3>
+          {b.proposal_reason && <BodyText text={b.proposal_reason} />}
+          {b.main_content && (
+            <>
+              <h4 style={{ fontSize: 15, margin: "14px 0 6px" }}>주요내용</h4>
+              <BodyText text={b.main_content} />
+            </>
+          )}
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+            국회 의안정보시스템 의안원문에서 가져온 공식 텍스트입니다.
+          </p>
+        </section>
+      )}
+
       {/* 대표발의자 → 프로필(그물망) */}
       {b.proposer && (
         <Link
@@ -195,6 +212,23 @@ export default function BillPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function BodyText({ text }: { text: string }) {
+  return (
+    <div
+      className="card"
+      style={{
+        fontSize: 14.5,
+        lineHeight: 1.7,
+        whiteSpace: "pre-wrap",
+        wordBreak: "keep-all",
+        background: "var(--ink-50)",
+      }}
+    >
+      {text}
+    </div>
   );
 }
 

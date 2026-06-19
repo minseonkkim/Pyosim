@@ -177,6 +177,8 @@ export interface BillDetail {
   status: string | null;
   proposed_date: string | null;
   likms_url: string | null;
+  proposal_reason: string | null;
+  main_content: string | null;
   proposer: ProposerBrief | null;
   vote: VoteAggregate | null;
   party_breakdown: PartyVote[];

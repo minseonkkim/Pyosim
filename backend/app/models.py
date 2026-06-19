@@ -123,6 +123,12 @@ class Bill(Base):
     pal_status: Mapped[PalStatus | None] = mapped_column(Enum(PalStatus))
     pal_url: Mapped[str | None] = mapped_column(Text)
 
+    # 법안 본문 — 의안원문(HWP PrvText)에서 추출한 공식 텍스트 (Phase 1-3 보완)
+    # 🟡 원문 그대로(요약·판정 없음). AI 요약(좋은점/문제점)은 별도 필드/단계.
+    proposal_reason: Mapped[str | None] = mapped_column(Text)  # 제안이유
+    main_content: Mapped[str | None] = mapped_column(Text)  # 주요내용
+    content_fetched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # 🟡 출처·검증
     source_url: Mapped[str | None] = mapped_column(Text)
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
