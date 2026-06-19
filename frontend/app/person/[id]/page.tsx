@@ -82,23 +82,18 @@ export default function PersonPage() {
         </p>
       ) : (
         p.proposed_bills.map((b) => (
-          <div className="card" key={b.id}>
-            <div style={{ fontWeight: 600 }}>{b.title}</div>
+          <Link
+            key={b.id}
+            href={`/bill/${b.id}`}
+            className="card"
+            style={{ display: "block", textDecoration: "none" }}
+          >
+            <div style={{ fontWeight: 600, color: "var(--fg)" }}>{b.title}</div>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
               의안 {b.bill_no}
-              {b.status ? ` · ${b.status}` : ""}
+              {b.status ? ` · ${b.status}` : ""} →
             </div>
-            {b.likms_url && (
-              <a
-                href={b.likms_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 13, fontWeight: 600 }}
-              >
-                의안정보시스템에서 보기 ↗
-              </a>
-            )}
-          </div>
+          </Link>
         ))
       )}
       {p.proposed_count > p.proposed_bills.length && (

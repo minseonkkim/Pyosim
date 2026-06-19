@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
+from app.bills import router as bills_router
 from app.config import settings
 from app.persons import router as persons_router
 
@@ -18,6 +19,7 @@ app.add_middleware(
 
 app.include_router(api_router)
 app.include_router(persons_router)
+app.include_router(bills_router)
 
 
 @app.get("/health")

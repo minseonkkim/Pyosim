@@ -143,6 +143,21 @@ def main() -> int:
     print("\n── 404 (없는 의원) ──")
     assert client.get("/api/persons/999999").status_code == 404
 
+    # ── 법안 상세 (Phase 1-3) ──
+    print("\n── GET /api/bills/{id} (법안 상세) ──")
+    bid = prof["proposed_bills"][0]["id"]  # 이두리 대표발의 데모 법안
+    r = client.get(f"/api/bills/{bid}")
+    assert r.status_code == 200, r.text
+    bill = r.json()
+    print(f"  [{bill['bill_no']}] {bill['title'][:30]}")
+    print(f"    대표발의={bill['proposer']['name'] if bill['proposer'] else None} "
+          f"funnel={[s['label'] for s in bill['funnel'] if s['done']]}")
+    assert bill["proposer"] and bill["proposer"]["name"] == "[데모] 이두리", bill["proposer"]
+    assert len(bill["funnel"]) == 4 and bill["funnel"][0]["done"]  # 발의 done
+    assert bill["notice"], "🟡 중립 고지 동봉 필요"
+    assert bill["vote"] is None  # 데모: 본회의 표결 없음
+    assert client.get("/api/bills/999999").status_code == 404
+
     print("\n✅ API end-to-end 검증 통과")
     return 0
 

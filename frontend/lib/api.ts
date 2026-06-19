@@ -132,6 +132,63 @@ export function fetchPerson(id: number): Promise<PersonProfile> {
   return getJSON<PersonProfile>(`/api/persons/${id}`);
 }
 
+// ───────── 법안 상세 (Phase 1-3, 그물망 '법안' 축) ─────────
+export interface ProposerBrief {
+  id: number;
+  name: string;
+  party: PartyBrief | null;
+}
+
+export interface VoteAggregate {
+  session_date: string | null;
+  member_total: number | null;
+  vote_total: number | null;
+  yes: number | null;
+  no: number | null;
+  blank: number | null;
+}
+
+export interface PartyVote {
+  party: string;
+  color_hex: string | null;
+  yes: number;
+  no: number;
+  abstain: number;
+  absent: number;
+}
+
+export interface Voter {
+  id: number;
+  name: string;
+  party: string | null;
+  choice: "찬성" | "반대" | "기권" | "불참";
+}
+
+export interface FunnelStep {
+  label: string;
+  done: boolean;
+}
+
+export interface BillDetail {
+  id: number;
+  bill_no: string;
+  title: string;
+  committee: string | null;
+  status: string | null;
+  proposed_date: string | null;
+  likms_url: string | null;
+  proposer: ProposerBrief | null;
+  vote: VoteAggregate | null;
+  party_breakdown: PartyVote[];
+  voters: Voter[];
+  funnel: FunnelStep[];
+  notice: string;
+}
+
+export function fetchBill(id: number): Promise<BillDetail> {
+  return getJSON<BillDetail>(`/api/bills/${id}`);
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);
