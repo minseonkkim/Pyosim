@@ -16,8 +16,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
-      <body>
+    <html lang="ko" data-theme="light">
+      {/* 일부 브라우저 확장(ColorZilla 등)이 <body>에 cz-shortcut-listen 같은
+          속성을 주입해 SSR↔클라이언트 hydration 불일치가 난다. body 속성 한 단계만
+          경고를 억제(내부 트리엔 영향 없음). */}
+      <body suppressHydrationWarning>
+
         <header className="appbar">
           <Link href="/" className="wordmark">
             표심
