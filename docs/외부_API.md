@@ -71,6 +71,7 @@ python -m jobs.run --job members              # 현직 의원 300
 python -m jobs.run --job bills                # 표결된 의안 + 집계 1,596
 python -m jobs.run --job vote_records --limit 50   # 의원별 찬반 (rate limit 대응 상한)
 python -m jobs.run --job proposers           # 발의법률안 + 대표발의자 연결 (~17.5k)
+python -m jobs.run --job committees           # 위원회 엔티티 + 의원 위원회경력(제22대)
 python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 ```
 

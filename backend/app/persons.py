@@ -23,7 +23,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Bill, Party, Person, VoteChoice, VoteRecord
+from app.models import (
+    Bill,
+    Committee,
+    CommitteeMembership,
+    Party,
+    Person,
+    VoteChoice,
+    VoteRecord,
+)
 
 router = APIRouter(prefix="/api/persons", tags=["persons"])
 
@@ -65,6 +73,13 @@ class CriminalOut(BaseModel):
     source_url: str | None  # 🟡 출처
 
 
+class CommitteeBrief(BaseModel):
+    name: str
+    type_name: str | None  # 상임위원회/상설특별위원회
+    role: str | None  # 위원장/간사/위원 (소스에 없으면 null)
+    term_label: str | None  # 활동기간(원문) — 🟡 '현재 소속' 단정 대신 사실 표기
+
+
 class VoteSummary(BaseModel):
     yes: int
     no: int
@@ -87,6 +102,7 @@ class PersonProfile(BaseModel):
     attendance_rate: float | None
     profile_source_url: str | None
     last_verified: datetime | None
+    committees: list[CommitteeBrief]  # 위원회 경력(제22대) — 🟡 사실+활동기간
     proposed_count: int  # 대표발의 총 건수
     proposed_bills: list[BillBrief]  # 최근 일부(그물망) — 법안 페이지로 연결
     vote_summary: VoteSummary  # 본회의 표결 참여 집계
@@ -144,6 +160,14 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
     ).all()
     proposed = proposed_all[:PROPOSED_LIMIT]
 
+    # 위원회 경력(제22대) — 상임위 우선·이름순. 🟡 '현재 소속' 단정 없이 활동기간과 함께.
+    committee_rows = db.execute(
+        select(Committee, CommitteeMembership.role, CommitteeMembership.term_label)
+        .join(CommitteeMembership, CommitteeMembership.committee_id == Committee.id)
+        .where(CommitteeMembership.person_id == pid)
+        .order_by(Committee.type_name, Committee.name)
+    ).all()
+
     counts: Counter = Counter()
     for (choice,) in db.execute(
         select(VoteRecord.choice).where(VoteRecord.person_id == pid)
@@ -171,6 +195,12 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
         attendance_rate=person.attendance_rate,
         profile_source_url=person.profile_source_url,
         last_verified=person.last_verified,
+        committees=[
+            CommitteeBrief(
+                name=c.name, type_name=c.type_name, role=role, term_label=term,
+            )
+            for c, role, term in committee_rows
+        ],
         proposed_count=len(proposed_all),
         proposed_bills=[
             BillBrief(

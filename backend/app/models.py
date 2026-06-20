@@ -94,6 +94,7 @@ class Person(Base):
     party: Mapped[Party | None] = relationship(back_populates="persons")
     vote_records: Mapped[list[VoteRecord]] = relationship(back_populates="person")
     criminal_records: Mapped[list[CriminalRecord]] = relationship(back_populates="person")
+    committee_memberships: Mapped[list[CommitteeMembership]] = relationship(back_populates="person")
 
 
 class District(Base):
@@ -207,6 +208,52 @@ class CriminalRecord(Base):
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     person: Mapped[Person] = relationship(back_populates="criminal_records")
+
+
+# ───────────────────────── 위원회 (Phase 1-1) ─────────────────────────
+class Committee(Base):
+    """상임위원회·상설특별위원회 엔티티 — 법안 소관·의원 소속의 연결 키.
+
+    출처: 열린국회정보 위원회 현황(nxrvzonlafugpqjuh). 현행 상임위 17 + 예결특위 1.
+    임시·국정조사 특위(340)는 잡음이 커 Phase 1 에선 제외(상임/상설만 정규화).
+    """
+    __tablename__ = "committee"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dept_code: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # HR_DEPT_CD
+    name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)  # COMMITTEE_NAME
+    type_name: Mapped[str | None] = mapped_column(String(40))  # CMT_DIV_NM(상임위원회/상설특별위원회)
+    member_limit: Mapped[int | None] = mapped_column(Integer)  # LIMIT_CNT(정원)
+
+    source_url: Mapped[str | None] = mapped_column(Text)
+    last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    memberships: Mapped[list[CommitteeMembership]] = relationship(back_populates="committee")
+
+
+class CommitteeMembership(Base):
+    """의원 ↔ 위원회 (제22대 위원회 경력). 🟡 '현재 소속'이 아니라 공식 '위원회 경력'.
+
+    출처: 위원회 경력(nyzrglyvagmrypezq) 제22대 행을 위원회 엔티티명으로 매칭.
+    2025 위원회 개편으로 신·구 명칭이 섞여, 현행 엔티티명 매칭이 자연스레 현행만 남긴다.
+    term_label 에 공식 활동기간(FRTO_DATE)을 원문 그대로 보존(판정 없이 사실 표기).
+    """
+    __tablename__ = "committee_membership"
+    __table_args__ = (
+        UniqueConstraint("committee_id", "person_id", name="uq_committee_person"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    committee_id: Mapped[int] = mapped_column(ForeignKey("committee.id"), nullable=False, index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("person.id"), nullable=False, index=True)
+    role: Mapped[str | None] = mapped_column(String(20))  # 위원장/간사/위원 (소스에 없으면 null)
+    term_label: Mapped[str | None] = mapped_column(String(60))  # 활동기간(FRTO_DATE) 원문
+
+    source_url: Mapped[str | None] = mapped_column(Text)
+    last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    committee: Mapped[Committee] = relationship(back_populates="memberships")
+    person: Mapped[Person] = relationship(back_populates="committee_memberships")
 
 
 # ───────────────────────── 테스트 (문항·답변) ─────────────────────────

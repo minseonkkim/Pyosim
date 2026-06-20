@@ -87,6 +87,30 @@ export default function PersonPage() {
         </div>
       </div>
 
+      {/* 위원회 — 🟡 '현재 소속' 단정 대신 공식 '제22대 위원회 경력'(활동기간 동반) */}
+      {p.committees.length > 0 && (
+        <div style={{ margin: "14px 0 2px" }}>
+          <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>
+            위원회 · 제22대 경력
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {p.committees.map((c) => (
+              <span
+                key={c.name}
+                className="card"
+                title={c.term_label ?? undefined}
+                style={{ margin: 0, padding: "5px 10px", fontSize: 13, fontWeight: 600 }}
+              >
+                {c.name}
+                {c.role && c.role !== "위원" ? (
+                  <span style={{ color: "var(--primary)", marginLeft: 4 }}>· {c.role}</span>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 요약 지표 */}
       <div style={{ display: "flex", gap: 10, margin: "16px 0" }}>
         <Stat label="출석률" value={p.attendance_rate != null ? `${Math.round(p.attendance_rate * 100)}%` : "—"} />

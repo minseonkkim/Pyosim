@@ -6,19 +6,30 @@
   vote_records  의안별 의원 찬/반/기권        nojepdqqaweusdfbi  → VoteRecord
   proposers     발의법률안 + 대표발의자 연결   nzmimeepazxkubdpn  → Bill(+proposer_id)
   proposer_kinds 제안자 구분(정부·위원장)        TVBPMBILL11        → Bill(+proposer_kind/text)
+  committees    위원회 + 의원 위원회경력(제22대) nxrvzonlafugpqjuh+nyzrglyvagmrypezq → Committee, CommitteeMembership
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
 """
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from clients.assembly import AssemblyClient
-from jobs.db import Bill, Party, Person, Vote, VoteChoice, VoteRecord
+from jobs.db import (
+    Bill,
+    Committee,
+    CommitteeMembership,
+    Party,
+    Person,
+    Vote,
+    VoteChoice,
+    VoteRecord,
+)
 
 # 확정 서비스 코드 (etl/scripts/explore_*.py 로 검증)
 SVC_MEMBERS = "nwvrqwxyaytdsfvhu"  # 현직 의원
@@ -27,9 +38,12 @@ SVC_VOTE_RECORDS = "nojepdqqaweusdfbi"  # 의원별 본회의 표결정보
 SVC_PROPOSED = "nzmimeepazxkubdpn"  # 발의법률안 (대표발의자 RST_MONA_CD)
 SVC_BILL_SEARCH = "TVBPMBILL11"  # 의안검색 — 제안자 구분(PROPOSER_KIND: 의원/정부/위원장)
 SVC_ALLMEMBER = "ALLNAMEMBER"  # 역대 의원 통합 — 사진(NAAS_PIC). NAAS_CD == MONA_CD
+SVC_CMT_STATUS = "nxrvzonlafugpqjuh"  # 위원회 현황(엔티티: 상임/특위, 정원)
+SVC_CMT_CAREER = "nyzrglyvagmrypezq"  # 국회의원 위원회 경력(MONA_CD↔위원회명, 활동기간)
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
+CMT_SOURCE = "https://open.assembly.go.kr/portal/assm/assmPrpl/committeeMemberList.do"
 
 
 def _now() -> datetime:
@@ -380,3 +394,98 @@ def run_proposer_kinds(
     if not dry_run:
         session.commit()
     return {"matched": n_match, "set": n_set, "of_bills": len(bills)}
+
+
+# ───────────────────────── committees (위원회 + 경력) ─────────────────────────
+# 정규화 대상: 현행 상임위 + 상설특위(예결위). 임시·국정조사 특위는 잡음이라 제외.
+_CMT_TYPES = ("상임위원회", "상설특별위원회")
+_AGE22_PREFIX = re.compile(r"^제22대\s*")
+
+
+def run_committees(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """위원회 엔티티 + 의원 위원회 경력(제22대) 매핑 (Phase 1-1).
+
+    1) 위원회 현황(`nxrvzonlafugpqjuh`) → 상임/상설특위만 Committee upsert(dept_code 키).
+    2) 위원회 경력(`nyzrglyvagmrypezq`) 제22대 행 → 위원회명이 (1)의 엔티티와 일치하면
+       CommitteeMembership upsert(MONA_CD→Person, term_label=FRTO_DATE 원문).
+    🟡 '현재 소속' 단정 대신 공식 '위원회 경력' + 활동기간 보존. 신·구 개편 명칭은
+       현행 엔티티명 매칭으로 자연 필터(구명칭·특위는 미매칭→제외). UniqueConstraint 로 멱등.
+    """
+    # ── 1) 위원회 엔티티 ──
+    committees = {c.dept_code: c for c in session.scalars(select(Committee)).all()}
+    by_name: dict[str, Committee] = {}
+    n_new_cmt = n_upd_cmt = 0
+    for row in client.iter_rows(SVC_CMT_STATUS):
+        if (row.get("CMT_DIV_NM") or "").strip() not in _CMT_TYPES:
+            continue
+        code = (row.get("HR_DEPT_CD") or "").strip()
+        name = (row.get("COMMITTEE_NAME") or "").strip()
+        if not code or not name:
+            continue
+        cmt = committees.get(code)
+        if cmt is None:
+            cmt = Committee(dept_code=code, name=name)
+            committees[code] = cmt
+            n_new_cmt += 1
+            if not dry_run:
+                session.add(cmt)
+        else:
+            n_upd_cmt += 1
+        cmt.name = name
+        cmt.type_name = (row.get("CMT_DIV_NM") or "").strip() or None
+        cmt.member_limit = _to_int(row.get("LIMIT_CNT"))
+        cmt.source_url = CMT_SOURCE
+        cmt.last_verified = _now()
+        by_name[name] = cmt
+    if not dry_run:
+        session.flush()  # committee.id 확보
+
+    # ── 2) 의원 위원회 경력(제22대) ──
+    persons = {
+        p.assembly_member_code: p
+        for p in session.scalars(select(Person)).all()
+        if p.assembly_member_code
+    }
+    existing = {
+        (m.committee_id, m.person_id): m
+        for m in session.scalars(select(CommitteeMembership)).all()
+    }
+    n_link = n_upd_link = n_nomatch = n_noperson = 0
+    for row in client.iter_rows(SVC_CMT_CAREER, max_rows=limit):
+        if (row.get("PROFILE_UNIT_NM") or "").strip() != "제22대":
+            continue
+        name = _AGE22_PREFIX.sub("", (row.get("PROFILE_SJ") or "").strip()).strip()
+        cmt = by_name.get(name)
+        if cmt is None:
+            n_nomatch += 1  # 특위·구개편명 — 현행 상임위 아님(의도된 제외)
+            continue
+        person = persons.get((row.get("MONA_CD") or "").strip())
+        if person is None:
+            n_noperson += 1
+            continue
+        if dry_run:
+            n_link += 1
+            continue
+        key = (cmt.id, person.id)
+        m = existing.get(key)
+        if m is None:
+            m = CommitteeMembership(committee_id=cmt.id, person_id=person.id)
+            existing[key] = m
+            session.add(m)
+            n_link += 1
+        else:
+            n_upd_link += 1
+        m.term_label = (row.get("FRTO_DATE") or "").strip() or None
+        m.source_url = CMT_SOURCE
+        m.last_verified = _now()
+
+    if not dry_run:
+        session.commit()
+    return {
+        "new_committee": n_new_cmt, "updated_committee": n_upd_cmt,
+        "linked": n_link, "updated_link": n_upd_link,
+        "skipped_nonstanding": n_nomatch, "skipped_no_person": n_noperson,
+    }

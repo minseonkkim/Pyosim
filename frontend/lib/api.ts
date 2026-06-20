@@ -98,6 +98,13 @@ export interface VoteSummary {
   total: number;
 }
 
+export interface CommitteeBrief {
+  name: string;
+  type_name: string | null;
+  role: string | null;
+  term_label: string | null;
+}
+
 export interface PersonProfile {
   id: number;
   name: string;
@@ -112,6 +119,7 @@ export interface PersonProfile {
   attendance_rate: number | null;
   profile_source_url: string | null;
   last_verified: string | null;
+  committees: CommitteeBrief[];
   proposed_count: number;
   proposed_bills: BillBrief[];
   vote_summary: VoteSummary;
