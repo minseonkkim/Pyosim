@@ -24,6 +24,7 @@ SVC_MEMBERS = "nwvrqwxyaytdsfvhu"  # 현직 의원
 SVC_BILLS = "ncocpgfiaoituanbr"  # 의안별 표결현황(집계)
 SVC_VOTE_RECORDS = "nojepdqqaweusdfbi"  # 의원별 본회의 표결정보
 SVC_PROPOSED = "nzmimeepazxkubdpn"  # 발의법률안 (대표발의자 RST_MONA_CD)
+SVC_ALLMEMBER = "ALLNAMEMBER"  # 역대 의원 통합 — 사진(NAAS_PIC). NAAS_CD == MONA_CD
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
@@ -106,6 +107,44 @@ def run_members(
     if not dry_run:
         session.commit()
     return {"new_party": n_new_party, "new_person": n_new, "updated_person": n_upd}
+
+
+# ───────────────────────── photos ─────────────────────────
+def run_photos(
+    session: Session, client: AssemblyClient, *,
+    age: str = DEFAULT_AGE, dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """의원 사진(NAAS_PIC) 적재 — `ALLNAMEMBER`(역대 통합).
+
+    현직 API(`nwvrqwxyaytdsfvhu`)엔 사진 필드가 없어 통합 API 로 보강한다.
+    `NAAS_CD` 가 현직 `MONA_CD`(=`assembly_member_code`)와 동일 체계라 코드로 직접 매칭
+    (이름 매칭 불필요 → 동명이인 오류 없음). 우리 명단(300명)에 있는 코드만 갱신.
+    """
+    persons = {
+        p.assembly_member_code: p
+        for p in session.scalars(select(Person)).all()
+        if p.assembly_member_code
+    }
+    if not persons:
+        return {"error": "의원 데이터 없음 — members 잡 먼저 실행"}
+
+    n_set = n_seen = 0
+    for row in client.iter_rows(SVC_ALLMEMBER, max_rows=limit):
+        n_seen += 1
+        code = (row.get("NAAS_CD") or "").strip()
+        person = persons.get(code)
+        if person is None:
+            continue
+        pic = (row.get("NAAS_PIC") or "").strip()
+        if not pic:
+            continue
+        person.photo_url = pic
+        person.last_verified = _now()
+        n_set += 1
+
+    if not dry_run:
+        session.commit()
+    return {"scanned": n_seen, "photos_set": n_set, "of_members": len(persons)}
 
 
 # ───────────────────────── bills ─────────────────────────

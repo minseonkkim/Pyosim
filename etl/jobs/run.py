@@ -3,6 +3,7 @@
 사용:
   python -m jobs.run --job ping
   python -m jobs.run --job members
+  python -m jobs.run --job photos               # 의원 사진(ALLNAMEMBER NAAS_PIC)
   python -m jobs.run --job bills
   python -m jobs.run --job vote_records --limit 20
   python -m jobs.run --job propose_dates --limit 50   # likms 상세 '제안일자' → 발의일(대안 보강)
@@ -67,6 +68,20 @@ def _members(args) -> None:
     finally:
         session.close()
     print(f"members 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("photos")
+def _photos(args) -> None:
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_photos(
+            session, _build_client(), age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"photos 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("bills")
