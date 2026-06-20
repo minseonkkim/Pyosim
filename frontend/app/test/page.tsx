@@ -84,6 +84,20 @@ export default function TestPage() {
 
   const total = questions.length;
   const q = questions[idx];
+
+  // 문항이 없거나 idx가 범위를 벗어난 경우(예: 빈 응답) 안전하게 처리.
+  if (!q) {
+    return (
+      <main>
+        <h2>표시할 문항이 없어요</h2>
+        <p className="muted">아직 등록된 테스트 문항이 없습니다. 잠시 후 다시 시도해 주세요.</p>
+        <button className="btn btn-ghost" onClick={() => location.reload()}>
+          다시 시도
+        </button>
+      </main>
+    );
+  }
+
   const answeredCount = Object.keys(answers).length;
   const selected = answers[q.id];
 
