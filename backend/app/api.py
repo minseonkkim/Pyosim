@@ -154,12 +154,7 @@ def list_questions(
         )
         for q in questions
     ]
-    notice = (
-        "⚠️ 검토 전 초안 문항이 포함된 미리보기입니다(공개 전 외부 교차검토 필요)."
-        if preview
-        else None
-    )
-    return QuestionsResponse(questions=out, preview=preview, notice=notice)
+    return QuestionsResponse(questions=out, preview=preview, notice=None)
 
 
 @router.post("/results", response_model=ResultsResponse)
