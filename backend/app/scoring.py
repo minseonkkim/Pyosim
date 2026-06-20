@@ -30,6 +30,8 @@ from app.models import AnswerChoice, Party, Person, VoteChoice, VoteRecord
 혁 = "조국혁신당"
 개 = "개혁신당"
 진 = "진보당"
+기 = "기본소득당"
+사 = "사회민주당"
 
 # 의안번호 → 정당 집계 입장(찬성 측 / 반대 측). 출처: 각 의안의 22대 본회의 표결.
 # seed_questions.py DRAFTS 의 주석([민·혁·진 찬 / 힘·개 반] 등)과 1:1 대응.
@@ -44,8 +46,9 @@ CURATED_PARTY_STANCES: dict[str, dict[str, list[str]]] = {
     "2214866": {"찬": [민, 힘], "반": [혁, 개, 진]},        # 주요시설 인근 집회 제한
 }
 
-# 채점에 쓰는 정당(원내 변별력 있는 5당). 군소·무소속은 표본이 작아 일치율 왜곡 → 제외.
-SCORED_PARTIES: list[str] = [민, 힘, 혁, 개, 진]
+# 채점에 쓰는 정당 — 원내 전 정당(무소속 제외: 단일 입장이 없는 개별 의원 집합이라 일치율 무의미).
+# ⚠️ 기본소득당·사회민주당은 1석이라 그 1인의 표결로 일치율이 정해짐(표본 작음 유의).
+SCORED_PARTIES: list[str] = [민, 힘, 혁, 개, 진, 기, 사]
 
 DISCLAIMER = (
     "이 결과는 실제 국회 표결과 내 답의 '일치도'일 뿐입니다. "
