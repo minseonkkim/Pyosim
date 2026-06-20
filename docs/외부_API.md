@@ -6,9 +6,10 @@
 
 | 소스                          | 상태       | 비고                                  |
 | ----------------------------- | ---------- | ------------------------------------- |
-| 열린국회정보 (open.assembly)  | ✅ 발급됨   | `ASSEMBLY_API_KEY` — 동작 확인 완료   |
+| 열린국회정보 (open.assembly)  | ✅ 발급됨   | `ASSEMBLY_API_KEY` — **이 키 하나로 포털 전체 271개 서비스**(사무처·NABO·입법조사처·도서관·미래연) 동작. 라이브 검증 완료 |
+| 열린재정 (openfiscaldata)     | ✅ 발급됨   | `OFD_API_KEY` — 세금 도구. OPFI160~172 동작 확인 |
 | 선관위 (info.nec / data.go.kr)| ⬜ 미발급   | Phase 3 전과 DB 착수 전 필요          |
-| 공공데이터포털 (data.go.kr)   | ⬜ 미발급   | Phase 2 선거구·자금 착수 전 필요      |
+| 공공데이터포털 (data.go.kr)   | ⬜ 미발급   | Phase 2 선거구·자금 + **조세지출·세목별 세입**(세금 도구) 착수 전 필요 |
 
 ## 열린국회정보 (open.assembly.go.kr)
 
@@ -91,6 +92,108 @@ python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 
 - 포털상 일일 호출 한도가 적용됨(계정/서비스별). **정확한 한도는 마이페이지에서 확인 필요(⬜ TODO).**
 - 대응: 자체 DB 캐싱 + 배치 수집(1일 1회). (기획서 13장 리스크 대응)
+
+### 동일 키로 확장 가능한 서비스 — 전수 카탈로그 + 라이브 검증 (2026-06-20)
+
+> **핵심:** 발급받은 `ASSEMBLY_API_KEY` **하나로 열린국회정보 포털 전체(271개 서비스)** 가 열린다.
+> 국회사무처(212) + 국회예산정책처/NABO(23) + 국회입법조사처(18) + 국회도서관(13) + 국회미래연구원(4) + 기타(1).
+> **다른 기관 서비스도 같은 키로 동작 확인**(예: NABO `negjnychalvyrcifv`, 입법조사처 `nxlcxbbkapsrjayur` → INFO-000).
+> 추가 키 발급 불필요. 아래는 제품(로드맵) 관련 후보를 [explore_catalog.py](../etl/scripts/explore_catalog.py) 로 **라이브 실측**한 결과.
+> 범례: ✅ 그대로 동작 / 🔑 키 OK·필수 파라미터 필요(ERROR-300) / ⬜ 현재 데이터 0건(INFO-200, 회기 따라 채워짐).
+
+#### 위원회 (Phase 1-1 Committee 모델 충족)
+
+| SERVICE | 내용 | 건수 | 주요 필드 | 상태 |
+| --- | --- | --- | --- | --- |
+| `nxrvzonlafugpqjuh` | 위원회 현황 정보 | 358 | `COMMITTEE_NAME`,`CURR_CNT`,`POLY_CNT` | ✅ |
+| `nktulghcadyhmiqxi` | 위원회 위원 명단 | 85 | `DEPT_NM`,`HG_NM`,`MONA_CD`(의원매핑),`JOB_RES_NM` | ✅ |
+| `nyzrglyvagmrypezq` | 국회의원 위원회 경력 | 3,720 | `MONA_CD`,`FRTO_DATE`,`PROFILE_SJ` | ✅ |
+| `nuvypcdgahexhvrjt` | 국회의원 상임위 활동 | — | — | 🔑 |
+| `ndiwuqmpambgvnfsj` | 위원회 계류법률안 | — | — | 🔑 |
+| `ncwgseseafwbuheph` | 위원회 회의록 | — | — | 🔑 |
+
+#### 청원 (Phase 2 기능 A — 기획서가 적은 'XLS/CSV' 대신 API 직접 수집 가능)
+
+| SERVICE | 내용 | 건수(22대) | 주요 필드 | 상태 |
+| --- | --- | --- | --- | --- |
+| `nvqbafvaajdiqhehi` | 청원 계류현황 | 286 | `BILL_ID`,`BILL_NAME`,`PROPOSER`,`CURR_COMMITTEE`,`PROPOSE_DT`,`LINK_URL` | ✅ AGE 필요 |
+| `ncryefyuaflxnqbqo` | 청원 처리현황 | 19 | +`PROC_RESULT_CD`(최종처리) | ✅ AGE 필요 |
+| `PTTRCP`/`PTTINFODETAIL`/`PTTINFOPPSR` | 청원 접수목록·상세·소개의원 | — | — | 🔑 |
+| `NAMEMBERLEGIPTT` | 국회의원 청원현황(의원↔청원) | — | — | 🔑 |
+| `PTTJUDGE`/`PTTCNTMAIN` | 청원 심사정보·통계 | — | — | 🔑 |
+
+#### 입법예고 (Phase 2 기능 B-4.4 — 기획서가 적은 '웹/스크래핑' 대신 API 직접 수집 가능)
+
+| SERVICE | 내용 | 상태 |
+| --- | --- | --- |
+| `nknalejkafmvgzmpt` | 진행중 입법예고 | ⬜ 현재 0건(회기 따라 채워짐) |
+| `nohgwtzsamojdozky` | 종료된 입법예고 | 🔑 (DAE_NUM 등 필요) |
+
+> ⚠️ 단, 이 두 서비스가 시민 **찬반 의견 카운트**까지 주는지는 파라미터 채워 재확인 필요(메타만일 수 있음). 의견 본문/집계가 없으면 국민참여입법센터(opinion.lawmaking.go.kr, 별도 무료 OC 키)와 병행 검토.
+
+#### 의안 심사·단계·공동발의 (Phase 1-3 / 2-5 보강)
+
+| SERVICE | 내용 | 건수 | 주요 필드 | 상태 |
+| --- | --- | --- | --- | --- |
+| `BILLINFOPPSR` | 의안 제안자정보 → **공동발의** | — | — | 🔑 (Phase 2-5 공동발의 충족) |
+| `BILLINFODETAIL` | 의안 상세정보 | — | — | 🔑 |
+| `BILLJUDGE` | 의안 심사정보(예·결산 제외) | 36,018 | `PPSR_KIND`,`JRCMIT_NM`,`JRCMIT_PROC_DT/RSLT`,`LINK_URL` | ✅ |
+| `BILLRCP` | 의안 접수목록(역대 전수) | 133,168 | `ERACO`,`BILL_KIND`,`PPSR_KIND`,`PROC_RSLT` | ✅ |
+| `nayjnliqaexiioauy` | 본회의 부의안건 | 61 | 위원회→법사위→본회의 **단계별 일자** | ✅ AGE |
+| `nwbpacrgavhjryiph` | 본회의 처리안건(법률안) | 1,578 | **표결수치**(`YES/NO/BLANK_TCNT`)+전 단계 일자 → 처리 타임라인 골드 | ✅ AGE |
+
+#### 통계 — 기능 B-4.2(관심도 vs 활동량) 분모
+
+| SERVICE | 내용 | 건수 | 상태 |
+| --- | --- | --- | --- |
+| `BILLCNTRSVT` | 계류의안 통계(위원회별) | 25 | ✅ |
+| `nzivskufaliivfhpb` | 역대 의안 통계(대별 가결/부결/폐기) | 20 | ✅ |
+| `BILLCNTPRPSR` | 처리 의안통계(발의주체별) | — | 🔑 |
+
+#### 의원 프로필 보강 (Phase 1-2)
+
+| SERVICE | 내용 | 건수 | 주요 필드 | 상태 |
+| --- | --- | --- | --- | --- |
+| `negnlnyvatsjwocar` | 국회의원 SNS정보 | 300 | `MONA_CD`,트위터/페북/유튜브/블로그 URL | ✅ |
+| `nexgtxtmaamffofof` | 국회의원 의원이력 | 615 | `MONA_CD`,`FRTO_DATE`,`PROFILE_SJ` | ✅ |
+| `nqfvrbsdafrmuzixe` | 날짜별 의정활동 | — | — | 🔑 |
+
+#### 회의록·발언 (콘텐츠 깊이 — "누가 뭐라 했나")
+
+| SERVICE | 내용 | 상태 |
+| --- | --- | --- |
+| `nzbyfwhwaoanttzje` | 본회의 회의록 | 🔑 |
+| `ncwgseseafwbuheph` | 위원회 회의록 | 🔑 |
+| `npeslxqbanwkimebr` | 국회의원 영상회의록(발언영상) | 🔑 |
+| `VCONFBILLLIST`/`VCONFDETAIL` 등 | 회의별 의안·회의록 상세 | (전용 회의록 API군 다수) |
+
+#### 일정·정당·국정감사·인사청문 (감시견/시즌 콘텐츠)
+
+| SERVICE | 내용 | 건수 | 상태 |
+| --- | --- | --- | --- |
+| `ALLSCHEDULE` | 국회일정 통합 | 91,453 | ✅ (감시견 알림 토대) |
+| `nekcaiymatialqlxr` | 본회의 일정 | — | 🔑 |
+| `nepjpxkkabqiqpbvk` | 정당·교섭단체 의석수 | 9 | ✅ |
+| `AUDITREPORTRESULT` | 국정감사 결과보고서 | 347 | ✅ (PDF/HWP URL) |
+| `nrvsawtaauyihadij` | 인사청문회 | 58 | ✅ |
+| `nztwkhgzakucszgls` | 사업별 예산 편성 규모(국회 자체) | 125 | ✅ |
+
+> 전체 271개 목록 원천: `hollobit/assembly-api-mcp` `docs/discovered-all-codes.json`(동일 키로 271/276 discovered). 위 표는 그중 로드맵 직접 관련 + 라이브 검증분만.
+
+## 열린재정 (openapi.openfiscaldata.go.kr) — `OFD_API_KEY`
+
+> 세금 도구(/tax) 데이터 출처. 규약·이중 인코딩은 [memory: budget-data-via-openfiscal-api] / [openfiscal.py](../etl/clients/openfiscal.py) 참고.
+> OPFI 코드대 스윕 결과(`ACNT_YR` 필수, 라이브 검증 2026-06-20): **OPFI160~168, 170~172 동작**(169·173+ 없음).
+
+| SERVICE | 내용 | 상태 |
+| --- | --- | --- |
+| `OPFI165` | 16대 분야별 결산(실제 집행) — **사용 중** | ✅ |
+| `OPFI172` | 16대 분야별 본예산 + 부문/프로그램/단위/세부사업 수 — **사용 중** | ✅ |
+| `OPFI166` | **부처(OFFC_NM)별 결산**(63) → '부처별 지출' 신규 가능 | ✅ |
+| `OPFI167` | 회계구분(일반/특별/기금) 비율 총괄 | ✅ |
+| `OPFI160~164,168,170,171` | 회계·기금·사업 단위 세분(세입세출/회계명/기금분류/단위·세부사업) | ✅ |
+
+> ⚠️ data.go.kr 의 **조세지출·세목별 세입**(세금 도구와 직결)은 열린재정 OPFI 가 아니라 **별도 data.go.kr 키** 필요(미발급). 열린재정 OPFI 로는 '지출(어디로)' 측면만 커버됨.
 
 ## 의안 본문 — likms 의안원문 (스크래핑, Phase 1-3 보완)
 

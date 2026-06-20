@@ -1,0 +1,222 @@
+======================================================================
+[열린국회정보] 동일 ASSEMBLY_API_KEY 로 추가 접근 가능 서비스 실측
+======================================================================
+
+[nxrvzonlafugpqjuh] 위원회 현황 정보  extra={}
+  ✅ CODE=INFO-000 총=358
+     필드: ['CMT_DIV_CD', 'CMT_DIV_NM', 'HR_DEPT_CD', 'COMMITTEE_NAME', 'HG_NM', 'HG_NM_LIST', 'LIMIT_CNT', 'CURR_CNT', 'POLY99_CNT', 'POLY_CNT']
+
+[nktulghcadyhmiqxi] 위원회 위원 명단  extra={}
+  ✅ CODE=INFO-000 총=85
+     필드: ['DEPT_CD', 'DEPT_NM', 'JOB_RES_NM', 'HG_NM', 'ORIG_NM', 'POLY_NM', 'ASSEM_TEL', 'ASSEM_EMAIL', 'HJ_NM', 'ROOM_NO', 'STAFF', 'SECRETARY', 'SECRETARY2', 'MONA_CD']
+
+[nyzrglyvagmrypezq] 국회의원 위원회 경력  extra={}
+  ✅ CODE=INFO-000 총=3720
+     필드: ['HG_NM', 'HJ_NM', 'FRTO_DATE', 'PROFILE_SJ', 'MONA_CD', 'PROFILE_UNIT_CD', 'PROFILE_UNIT_NM']
+
+[nuvypcdgahexhvrjt] 국회의원 상임위 활동  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[ndiwuqmpambgvnfsj] 위원회 계류법률안  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[ncwgseseafwbuheph] 위원회 회의록  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[nvqbafvaajdiqhehi] 청원 계류현황  extra={'AGE': '22'}
+  ✅ CODE=INFO-000 총=286
+     필드: ['BILL_NO', 'BILL_ID', 'AGE', 'BILL_NAME', 'PROPOSER', 'APPROVER', 'PROPOSE_DT', 'CURR_COMMITTEE_ID', 'CURR_COMMITTEE', 'COMMITTEE_DT', 'LINK_URL']
+
+[ncryefyuaflxnqbqo] 청원 처리현황  extra={'AGE': '22'}
+  ✅ CODE=INFO-000 총=19
+     필드: ['BILL_NO', 'BILL_ID', 'AGE', 'BILL_NAME', 'PROPOSER', 'APPROVER', 'PROPOSE_DT', 'PROC_RESULT_CD', 'CURR_COMMITTEE_ID', 'CURR_COMMITTEE', 'COMMITTEE_DT', 'LINK_URL']
+
+[PTTRCP] 청원 접수목록  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[PTTINFODETAIL] 청원 상세정보  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[NAMEMBERLEGIPTT] 국회의원 청원현황  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[nknalejkafmvgzmpt] 진행중 입법예고  extra={}
+  ⛔ INFO-200: 해당하는 데이터가 없습니다.
+
+[nohgwtzsamojdozky] 종료된 입법예고  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[BILLINFODETAIL] 의안 상세정보  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[BILLINFOPPSR] 의안 제안자정보(공동발의)  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[BILLJUDGE] 의안 심사정보  extra={}
+  ✅ CODE=INFO-000 총=36018
+     필드: ['ERACO', 'BILL_ID', 'BILL_NO', 'BILL_NM', 'PPSR_KIND', 'PPSL_DT', 'JRCMIT_NM', 'BDG_CMMT_DT', 'JRCMIT_PRSNT_DT', 'JRCMIT_PROC_DT', 'JRCMIT_PROC_RSLT', 'LINK_URL']
+
+[BILLRCP] 의안 접수목록  extra={}
+  ✅ CODE=INFO-000 총=133168
+     필드: ['ERACO', 'BILL_ID', 'BILL_NO', 'BILL_KIND', 'BILL_NM', 'PPSR_KIND', 'PPSL_DT', 'PROC_RSLT', 'LINK_URL']
+
+[nayjnliqaexiioauy] 본회의 부의안건  extra={'AGE': '22'}
+  ✅ CODE=INFO-000 총=61
+     필드: ['BILL_ID', 'BILL_NO', 'AGE', 'BILL_NAME', 'CURR_COMMITTEE_ID', 'CURR_COMMITTEE', 'PROC_DT', 'COMMITTEE_RESULT', 'LINK_URL', 'COMMITTEE_PROC_DT', 'CMT_PRESENT_DT', 'LAW_SUBMIT_DT', 'LAW_PRESENT_DT', 'LAW_PROC_DT', 'LAW_PROC_RESULT_CD', 'COMMITTEE_DT']
+
+[nwbpacrgavhjryiph] 본회의 처리안건_법률안  extra={'AGE': '22'}
+  ✅ CODE=INFO-000 총=1578
+     필드: ['AGE', 'BILL_NO', 'BILL_NM', 'BILL_KIND', 'PROPOSER', 'COMMITTEE_NM', 'PROC_RESULT_CD', 'VOTE_TCNT', 'YES_TCNT', 'NO_TCNT', 'BLANK_TCNT', 'PROPOSE_DT', 'COMMITTEE_SUBMIT_DT', 'COMMITTEE_PRESENT_DT', 'COMMITTEE_PROC_DT', 'LAW_SUBMIT_DT', 'LAW_PRESENT_DT', 'LAW_PROC_DT', 'RGS_PRESENT_DT', 'RGS_PROC_DT', 'CURR_TRANS_DT', 'ANNOUNCE_DT', 'BILL_ID', 'LINK_URL', 'CURR_COMMITTEE_ID']
+
+[BILLCNTPRPSR] 처리 의안통계(발의주체별)  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[BILLCNTRSVT] 계류의안 통계  extra={}
+  ✅ CODE=INFO-000 총=25
+     필드: ['CMIT_NM', 'CONSTI_RFBIL_CNT', 'DRFBD_CNT', 'STL_CNT', 'LGSLB_ASBLM_PRPSR_CNT', 'LGSLB_GVRN_PRPSR_CNT', 'LGSLB_SUM', 'AGMB_CNT', 'RSLNB_CNT', 'PRPSTB_CNT', 'RULB_CNT', 'ELCTB_CNT', 'IMPT_AGM_CNT', 'CMTM_DSCP_CNT', 'CMTM_QLF_INSC_CNT', 'ETC_CNT', 'CMIT_BY_SUM']
+
+[nzivskufaliivfhpb] 역대 의안 통계  extra={}
+  ✅ CODE=INFO-000 총=20
+     필드: ['ERACO', 'SBM', 'DEAL_CN_PSSG', 'DEAL_CN_RJCTN', 'DEAL_CN_DSU', 'DEAL_CN_WTHD', 'DEAL_CN_GVB', 'DEAL_CN_RSVT', 'TERM_EXPR_DSU']
+
+[negnlnyvatsjwocar] 국회의원 SNS정보  extra={}
+  ✅ CODE=INFO-000 총=300
+     필드: ['HG_NM', 'T_URL', 'F_URL', 'Y_URL', 'B_URL', 'MONA_CD']
+
+[nexgtxtmaamffofof] 국회의원 의원이력  extra={}
+  ✅ CODE=INFO-000 총=615
+     필드: ['HG_NM', 'HJ_NM', 'FRTO_DATE', 'PROFILE_SJ', 'MONA_CD', 'UNIT_CD', 'UNIT_NM']
+
+[nqfvrbsdafrmuzixe] 날짜별 의정활동  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[nzbyfwhwaoanttzje] 본회의 회의록  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[npeslxqbanwkimebr] 국회의원 영상회의록(발언영상)  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[ALLSCHEDULE] 국회일정 통합  extra={}
+  ✅ CODE=INFO-000 총=91453
+     필드: ['SCH_KIND', 'SCH_CN', 'SCH_DT', 'SCH_TM', 'CONF_DIV', 'CMIT_NM', 'CONF_SESS', 'CONF_DGR', 'EV_INST_NM', 'EV_PLC']
+
+[nekcaiymatialqlxr] 본회의 일정  extra={}
+  ⛔ ERROR-300: 필수 값이 누락되어 있습니다. 요청인자를 참고 하십시오.
+
+[nepjpxkkabqiqpbvk] 정당·교섭단체 의석수  extra={}
+  ✅ CODE=INFO-000 총=9
+     필드: ['POLY_GROUP_NM', 'POLY_NM', 'N1', 'N2', 'N3', 'N4']
+
+[AUDITREPORTRESULT] 국정감사 결과보고서  extra={}
+  ✅ CODE=INFO-000 총=347
+     필드: ['RPT_YR', 'CMIT_NM', 'RPT_TTL', 'PDF_DWLD_URL', 'HWP_DWLD_URL']
+
+[nrvsawtaauyihadij] 인사청문회  extra={}
+  ✅ CODE=INFO-000 총=58
+     필드: ['APPOINT_GRADE', 'APPOINT_NAME', 'BILL_NAME', 'PROPOSE_DT', 'CURR_COMMITTEE', 'SUBMIT_DT', 'PRESENT_DT', 'PROC_DT', 'PROC_RESULT', 'LINK_URL', 'MP_BOOK_URL', 'AGE', 'CURR_COMMITTEE_ID', 'BILL_ID', 'BILL_NO']
+
+[nztwkhgzakucszgls] 사업별 예산 편성 규모  extra={}
+  ✅ CODE=INFO-000 총=125
+     필드: ['YR', 'BZ_NM', 'BDG_TAMT']
+
+[negjnychalvyrcifv] [NABO] 결산 분석  extra={}
+  ✅ CODE=INFO-000 총=184
+     필드: ['REG_DATE', 'DEPARTMENT_NAME', 'SUBJECT', 'LINK_URL']
+
+[nxlcxbbkapsrjayur] [입법조사처] 이슈와 논점  extra={}
+  ✅ CODE=INFO-000 총=2515
+     필드: ['PDFFILEURL', 'VIEWERURL', 'BOOKNM', 'INSERTDT']
+
+======================================================================
+[열린재정] OFD_API_KEY 로 OPFI 코드대 스윕 (ACNT_YR=2024)
+======================================================================
+
+[OPFI160]
+  ✅ CODE=INFO-000 총=3
+     필드: ['ACNT_YR', 'BC_DIV_NM', 'BDG_FND_DIV_NM', 'ACNT_DIV_NM', 'SUM_EP_NAMT_AMT']
+
+[OPFI161]
+  ✅ CODE=INFO-000 총=33
+     필드: ['ACNT_YR', 'BC_DIV_NM', 'ACNT_DIV_NM', 'ACNT_NM', 'SUM_NASS_ANE_BDG_AMT']
+
+[OPFI162]
+  ✅ CODE=INFO-000 총=3
+     필드: ['ACNT_YR', 'DIV_NM', 'FND_CLAS_CD_NM', 'SUM_AMT']
+
+[OPFI163]
+  ✅ CODE=INFO-000 총=49
+     필드: ['ACNT_YR', 'DIV_NM', 'ACNT_NM', 'AMT']
+
+[OPFI164]
+  ✅ CODE=INFO-000 총=3
+     필드: ['ACNT_YR', 'DIV_NM', 'FND_OP_DIV_CD', 'FND_OP_DIV_CD_NM', 'AMT']
+
+[OPFI165]
+  ✅ CODE=INFO-000 총=16
+     필드: ['ACNT_YR', 'DIV_NM', 'FLD_CD', 'FLD_NM', 'SUM_AMT']
+
+[OPFI166]
+  ✅ CODE=INFO-000 총=63
+     필드: ['ACNT_YR', 'STL_BDG_DIV_NM', 'OFFC_NM', 'SUM_EP_AMT']
+
+[OPFI167]
+  ✅ CODE=INFO-000 총=1
+     필드: ['ACNT_YR', 'STL_BDG_DIV_NM', 'SUM_EP_AMT', 'SUM_GEN_EP_AMT', 'GEN_ACNT_RT', 'SUM_SPC_ACNT_AMT', 'SPC_ACNT_SUM_RT', 'SUM_NAT_EXCL_SPC_ACNT_AMT', 'NAT_EXCL_SPC_ACNT_RT', 'SUM_NAT_BLNC_DVLP_AMT', 'NAT_BLNC_DVLP_RT', 'SUM_FND_AMT', 'FND_RT']
+
+[OPFI168]
+  ✅ CODE=INFO-000 총=6
+     필드: ['ACNT_YR', 'DIV_NM', 'ACTV_NM', 'SAY_NM', 'SUM_AMT']
+
+[OPFI169]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI170]
+  ✅ CODE=INFO-000 총=7
+     필드: ['ACNT_YR', 'DIV_NM', 'ACNT_FND_DIV_CD_NM', 'ACTV_NM', 'SAY_NM', 'SUM_AMT']
+
+[OPFI171]
+  ✅ CODE=INFO-000 총=3
+     필드: ['ACNT_YR', 'BDG_STL_DIV_NM', 'ACNT_DIV_NM', 'EP_AMT']
+
+[OPFI172]
+  ✅ CODE=INFO-000 총=16
+     필드: ['ACNT_YR', 'BDG_STL_DIV_NM', 'FLD_CD', 'FLD_NM', 'FLD_AMT', 'SECT_CNT', 'PGM_CNT', 'ACTV_CNT', 'SAY_CNT']
+
+[OPFI173]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI174]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI175]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI176]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI177]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI178]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI179]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI180]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI181]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI182]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI183]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI184]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
+
+[OPFI185]
+  ⛔ ERROR-310: 해당하는 서비스를 찾을 수 없습니다.\n요청인자 중 SERVICE를 확인하십시오.
