@@ -16,6 +16,7 @@ export type EventName =
   | "source_open"
   | "tax_view"
   | "tax_calc"
+  | "tax_gaps_expand"
   | "tax_to_test";
 
 type Props = Record<string, string | number | boolean>;

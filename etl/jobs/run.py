@@ -158,7 +158,7 @@ def _bill_summary(args) -> None:
 
 @register("budget")
 def _budget(args) -> None:
-    # 열린재정 OPFI165 → frontend/lib/budget-data.json (세금 계산기 분야 막대)
+    # 열린재정 OPFI165(결산)+OPFI172(본예산) → frontend/lib/budget-data.json (세금 계산기)
     from jobs import budget
 
     stats = budget.run_budget(

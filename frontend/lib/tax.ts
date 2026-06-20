@@ -16,24 +16,30 @@ import budgetData from "./budget-data.json";
 export interface BudgetField {
   code: string; // FLD_CD (열린재정 분야코드)
   name: string;
-  trillion: number; // 조원 (결산)
+  trillion: number; // 조원 (결산 = 실제 집행)
+  budgetTrillion: number | null; // 조원 (본예산 = 처음 짠 계획). 없으면 null
+  sayCount: number | null; // 이 분야의 세부사업 수(드릴다운 예고)
   note: string; // 한 줄 예시 (사실 서술, 판정 X)
 }
 
 export interface BudgetMeta {
   year: number;
-  basis: string; // '결산'(실제 집행) 등
+  basis: string; // '결산'(실제 집행)
+  budgetBasis: string; // '본예산'(계획)
   source: string;
   sourceUrl: string;
-  totalTrillion: number;
+  totalTrillion: number; // 결산 합
+  budgetTotalTrillion: number; // 본예산 합
 }
 
 export const BUDGET_META: BudgetMeta = {
   year: budgetData.year,
   basis: budgetData.basis,
+  budgetBasis: budgetData.budget_basis,
   source: budgetData.source,
   sourceUrl: budgetData.source_url,
   totalTrillion: budgetData.total_trillion,
+  budgetTotalTrillion: budgetData.budget_total_trillion,
 };
 
 // 분야별 한 줄 예시(사실 서술). FLD_CD 기준 — 데이터가 바뀌어도 코드로 안정 매칭.
@@ -60,6 +66,8 @@ export const BUDGET_FIELDS: BudgetField[] = budgetData.fields.map((f) => ({
   code: f.code,
   name: f.name,
   trillion: f.trillion,
+  budgetTrillion: f.budget_trillion ?? null,
+  sayCount: f.say_count ?? null,
   note: NOTES_BY_CODE[f.code] ?? "",
 }));
 
@@ -250,6 +258,29 @@ export function distributeByBudget(nationalTax: number): FieldShare[] {
     const ratio = f.trillion / BUDGET_TOTAL;
     return { ...f, ratio, amount: Math.round(nationalTax * ratio) };
   });
+}
+
+// ── 계획(본예산) vs 실제(결산) ──
+// '집행률'이 아니라 '계획 대비 실제'다(분모가 본예산이라 추경·예비비로 100%를 넘을 수 있음).
+// 갭(결산-본예산)을 사실로만 보여준다 — 판정 금지(기획서 1.3).
+export interface PlanGap extends BudgetField {
+  budgetTrillion: number; // 본예산 있는 분야만 담으므로 non-null로 좁힘
+  gapTrillion: number; // 결산 - 본예산 (양수=계획보다 더 씀, 음수=덜 씀)
+  gapRatio: number; // 결산 / 본예산 (1.0 = 계획대로)
+}
+
+/** 본예산이 있는 분야를 갭(절댓값) 큰 순으로 정렬해 돌려준다(계획 vs 실제 섹션용). */
+export function planVsActual(): PlanGap[] {
+  return BUDGET_FIELDS.filter(
+    (f): f is BudgetField & { budgetTrillion: number } =>
+      f.budgetTrillion !== null && f.budgetTrillion > 0,
+  )
+    .map((f) => ({
+      ...f,
+      gapTrillion: Math.round((f.trillion - f.budgetTrillion) * 10) / 10,
+      gapRatio: f.trillion / f.budgetTrillion,
+    }))
+    .sort((a, b) => Math.abs(b.gapTrillion) - Math.abs(a.gapTrillion));
 }
 
 /** 원 단위를 "약 OO만원 / OO억" 으로 사람이 읽기 좋게. */

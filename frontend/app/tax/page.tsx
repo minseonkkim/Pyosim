@@ -9,7 +9,7 @@ import Link from "next/link";
 
 import TrackOnMount from "../TrackOnMount";
 import { track } from "@/lib/analytics";
-import { estimateTax, distributeByBudget, won, BUDGET_META, type SmeReduction } from "@/lib/tax";
+import { estimateTax, distributeByBudget, planVsActual, won, BUDGET_META, type SmeReduction } from "@/lib/tax";
 import TaxDonut from "./TaxDonut";
 
 const numInputStyle: React.CSSProperties = {
@@ -33,6 +33,10 @@ export default function TaxPage() {
   const [dependents, setDependents] = useState(0);
   const [children, setChildren] = useState(0);
   const [sme, setSme] = useState<SmeReduction>("none");
+  const [showAllGaps, setShowAllGaps] = useState(false);
+
+  // 계획(본예산) vs 실제(결산) — 정부 데이터라 급여와 무관, 한 번만 계산.
+  const planGaps = useMemo(() => planVsActual(), []);
 
   const monthlyWon = submitted !== null ? submitted * 10_000 : 0;
   const result = useMemo(
@@ -227,6 +231,63 @@ export default function TaxPage() {
           <div style={{ marginTop: 12 }}>
             <TaxDonut fields={fields} total={result.nationalTax} />
           </div>
+
+          {/* 계획(본예산) vs 실제(결산) — 같은 분야, 처음 짠 예산과 실제 쓴 돈의 차이. 사실만(판정 X). */}
+          <h3 style={{ marginTop: 24, marginBottom: 2 }}>그 예산, 계획대로 쓰였을까?</h3>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--muted)" }}>
+            {BUDGET_META.year}년 <b>{BUDGET_META.budgetBasis}</b>(처음 짠 계획)과{" "}
+            <b>{BUDGET_META.basis}</b>(실제 쓴 돈)의 분야별 차이가 큰 순서
+          </p>
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            {(showAllGaps ? planGaps : planGaps.slice(0, 5)).map((f, i) => {
+              const more = f.gapTrillion >= 0;
+              return (
+                <div
+                  key={f.code}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "12px 16px",
+                    borderTop: i === 0 ? "none" : "1px solid var(--border)",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 600 }}>{f.name}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+                      본예산 <span className="numeral">{f.budgetTrillion.toFixed(1)}조</span> → 결산{" "}
+                      <span className="numeral">{f.trillion.toFixed(1)}조</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <b className="numeral" style={{ fontSize: 15 }}>
+                      {more ? "+" : "−"}
+                      {Math.abs(f.gapTrillion).toFixed(1)}조
+                    </b>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      {more ? "계획보다 더" : "계획보다 덜"}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {!showAllGaps && planGaps.length > 5 && (
+            <button
+              className="btn btn-ghost btn-block"
+              onClick={() => {
+                setShowAllGaps(true);
+                track("tax_gaps_expand");
+              }}
+            >
+              16개 분야 전체 보기 →
+            </button>
+          )}
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+            ※ ‘계획’은 <b>본예산</b>(연초에 처음 짠 예산)이에요. 추경·예비비로 더 쓴 분야는
+            결산이 본예산을 넘을 수 있습니다. 많다/적다를 판정하지 않고 <b>차이만</b> 보여드려요.
+          </p>
 
           {/* 4대보험 분리 안내 — 정확성·중립성(기획서 1.3) */}
           <div className="card" style={{ marginTop: 8 }}>

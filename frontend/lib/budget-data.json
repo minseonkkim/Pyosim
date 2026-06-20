@@ -1,90 +1,140 @@
 {
-  "source": "열린재정 OPFI165 — 16대 분야별 재원배분(총지출 기준)",
-  "source_url": "https://openapi.openfiscaldata.go.kr/OPFI165",
+  "source": "열린재정 OPFI165(분야별 결산)·OPFI172(분야별 본예산)",
+  "source_url": "https://www.openfiscaldata.go.kr",
   "year": 2025,
   "basis": "결산",
+  "budget_basis": "본예산",
   "total_trillion": 684.1,
+  "budget_total_trillion": 673.5,
   "fetched_at": "2026-06-20",
   "fields": [
     {
       "code": "080",
       "name": "사회복지",
-      "trillion": 218.9
+      "trillion": 218.9,
+      "budget_trillion": 229.1,
+      "say_count": 751,
+      "program_count": 71
     },
     {
       "code": "010",
       "name": "일반·지방행정",
-      "trillion": 127.8
+      "trillion": 127.8,
+      "budget_trillion": 110.7,
+      "say_count": 1103,
+      "program_count": 106
     },
     {
       "code": "050",
       "name": "교육",
-      "trillion": 96.8
+      "trillion": 96.8,
+      "budget_trillion": 98.5,
+      "say_count": 218,
+      "program_count": 24
     },
     {
       "code": "040",
       "name": "국방",
-      "trillion": 57.0
+      "trillion": 57.0,
+      "budget_trillion": 59.0,
+      "say_count": 492,
+      "program_count": 25
     },
     {
       "code": "110",
       "name": "산업·중소기업및에너지",
-      "trillion": 35.0
+      "trillion": 35.0,
+      "budget_trillion": 28.2,
+      "say_count": 879,
+      "program_count": 57
     },
     {
       "code": "100",
       "name": "농림수산",
-      "trillion": 27.2
+      "trillion": 27.2,
+      "budget_trillion": 25.9,
+      "say_count": 687,
+      "program_count": 47
     },
     {
       "code": "020",
       "name": "공공질서및안전",
-      "trillion": 26.0
+      "trillion": 26.0,
+      "budget_trillion": 25.0,
+      "say_count": 683,
+      "program_count": 47
     },
     {
       "code": "120",
       "name": "교통및물류",
-      "trillion": 20.7
+      "trillion": 20.7,
+      "budget_trillion": 21.0,
+      "say_count": 753,
+      "program_count": 41
     },
     {
       "code": "090",
       "name": "보건",
-      "trillion": 19.5
+      "trillion": 19.5,
+      "budget_trillion": 19.7,
+      "say_count": 501,
+      "program_count": 42
     },
     {
       "code": "070",
       "name": "환경",
-      "trillion": 12.1
+      "trillion": 12.1,
+      "budget_trillion": 13.0,
+      "say_count": 380,
+      "program_count": 26
     },
     {
       "code": "130",
       "name": "통신",
-      "trillion": 11.7
+      "trillion": 11.7,
+      "budget_trillion": 9.2,
+      "say_count": 311,
+      "program_count": 21
     },
     {
       "code": "150",
       "name": "과학기술",
-      "trillion": 10.8
+      "trillion": 10.8,
+      "budget_trillion": 10.8,
+      "say_count": 591,
+      "program_count": 42
     },
     {
       "code": "060",
       "name": "문화및관광",
-      "trillion": 8.8
+      "trillion": 8.8,
+      "budget_trillion": 8.8,
+      "say_count": 502,
+      "program_count": 54
     },
     {
       "code": "030",
       "name": "통일·외교",
-      "trillion": 6.5
+      "trillion": 6.5,
+      "budget_trillion": 7.7,
+      "say_count": 313,
+      "program_count": 34
     },
     {
       "code": "140",
       "name": "국토및지역개발",
-      "trillion": 4.6
+      "trillion": 4.6,
+      "budget_trillion": 4.5,
+      "say_count": 217,
+      "program_count": 17
     },
     {
       "code": "160",
       "name": "예비비",
-      "trillion": 0.7
+      "trillion": 0.7,
+      "budget_trillion": 2.4,
+      "say_count": 1,
+      "program_count": 1
     }
   ]
 }
