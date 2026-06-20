@@ -19,18 +19,18 @@ export default function Home() {
           margin: "16px 0 0",
         }}
       >
-        내 정치성향,
+        뉴스는 안 봐도,
         <br />
-        2분이면 알아요
+        내 생각은 있잖아요
       </h1>
 
       <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--ink-700)" }}>
-        정치 용어는 하나도 없습니다. 일상 속 선택 8가지에 답하면, 실제 국회
-        표결과 내 생각이 얼마나 닮았는지 보여드려요.
+        정치 잘 몰라도 괜찮아요. 끌리는 쪽만 고르면, 내 생각이 국회의 실제 표결과
+        얼마나 닮았는지 3분 만에 보여드려요.
       </p>
 
       <Link href="/test" className="btn btn-block" style={{ marginTop: 20 }}>
-        내 정치성향 알아보기 →
+        3분 만에 확인하기 →
       </Link>
 
       <Link
@@ -58,7 +58,7 @@ export default function Home() {
           color: "var(--muted)",
         }}
       >
-        <li>약 2분, 8문항 · 모바일에서 편하게</li>
+        <li>약 3분, 20문항 · 모바일에서 편하게</li>
         <li>각 문항은 실제 발의·표결된 법안이 출처예요 (▼로 확인)</li>
         <li>특정 정당을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
       </ul>

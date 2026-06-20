@@ -25,7 +25,7 @@ export async function generateMetadata({
   const title = party
     ? `나와 가장 많이 겹친 곳: ${party} (${rate}%) · 표심`
     : "표심 · Pyosim";
-  const description = "실제 국회 표결로 보는 내 정치성향 — 표결 일치도일 뿐, 정치적 판단은 본인 몫.";
+  const description = "실제 국회 표결과 내 생각이 얼마나 닮았는지 — 표결 일치도일 뿐, 정치적 판단은 본인 몫.";
 
   return {
     title,
@@ -80,12 +80,12 @@ export default async function SharePage({ searchParams }: { searchParams: SP }) 
         </div>
       ) : (
         <p style={{ marginTop: 16, fontSize: 17 }}>
-          실제 국회 표결로 내 정치성향을 확인해 보세요.
+          내 생각이 실제 국회 표결과 얼마나 닮았는지 확인해 보세요.
         </p>
       )}
 
       <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 16 }}>
-        나는 어떤 표결과 가장 닮았을까? 정치 용어 없이 8문항으로 확인해요.
+        나는 어떤 표결과 가장 닮았을까? 20문항으로 확인해요.
       </p>
       <Link href="/test" className="btn btn-block" style={{ marginTop: 12 }}>
         나도 해보기 →
