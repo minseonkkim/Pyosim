@@ -163,6 +163,15 @@ def main() -> int:
     assert bill["summary_notice"] is None
     assert client.get("/api/bills/999999").status_code == 404
 
+    # ── 법안 피드 (큐레이션 홈) ──
+    print("\n── GET /api/bills (큐레이션 피드) ──")
+    r = client.get("/api/bills?limit=5")
+    assert r.status_code == 200, r.text
+    feed = r.json()
+    assert feed["notice"], "🟡 피드 선별 기준 고지 필요"
+    assert isinstance(feed["items"], list)  # 데모는 표결 없어 0건 가능
+    print(f"  피드 {len(feed['items'])}건 (데모는 표결 없어 0건 정상)")
+
     print("\n✅ API end-to-end 검증 통과")
     return 0
 

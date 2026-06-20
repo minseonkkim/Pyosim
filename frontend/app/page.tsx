@@ -34,6 +34,14 @@ export default function Home() {
       </Link>
 
       <Link
+        href="/bills"
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: 10 }}
+      >
+        의견이 갈린 법안 보기 →
+      </Link>
+
+      <Link
         href="/persons"
         className="btn btn-ghost btn-block"
         style={{ marginTop: 10 }}

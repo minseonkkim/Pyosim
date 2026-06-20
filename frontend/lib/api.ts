@@ -194,6 +194,28 @@ export function fetchBill(id: number): Promise<BillDetail> {
   return getJSON<BillDetail>(`/api/bills/${id}`);
 }
 
+export interface BillCard {
+  id: number;
+  title: string;
+  committee: string | null;
+  proposed_date: string | null;
+  yes: number | null;
+  no: number | null;
+  contested_reason: string;
+  party_split: boolean;
+  pro: string | null;
+  con: string | null;
+}
+
+export interface BillFeed {
+  items: BillCard[];
+  notice: string;
+}
+
+export function fetchBills(limit = 20): Promise<BillFeed> {
+  return getJSON<BillFeed>(`/api/bills?limit=${limit}`);
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);

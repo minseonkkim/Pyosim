@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.bill_content import fetch_bill_content
@@ -40,6 +40,21 @@ SUMMARY_NOTICE = (
     "양쪽을 대칭되게 정리한 참고용 요약입니다. 찬반 판단은 담지 않으며, 판단은 원문을 보고 "
     "직접 하시길 권합니다."
 )
+
+FEED_NOTICE = (
+    "정쟁·절차성 안건을 제외하고, 본회의에서 의견이 갈린(반대표가 많거나 정당 입장이 갈린) "
+    "정책 법안을 보여드립니다. 추천이 아니라 '논쟁이 있었다'는 사실에 따른 선별입니다."
+)
+
+# 정쟁성·절차성 안건 — 중립성(🟡)·일상 관련성 위해 피드에서 제외(discriminating_bills 와 동일 기준)
+FEED_EXCLUDE = [
+    "특별검사", "특검", "내란", "계엄", "탄핵", "감사요구", "감사 요구", "국정조사",
+    "결산", "예산안", "기금운용", "회기", "의사일정", "규칙", "구성의 건", "사퇴",
+    "해임", "위원 정수", "선출", "선임", "추천", "임명동의", "결의안",
+    "본회의록", "징계", "체포동의", "자격심사", "의혹",
+]
+
+MAJOR_PARTIES = ("더불어민주당", "국민의힘")
 
 
 # ───────────────────────── 스키마 ─────────────────────────
@@ -100,6 +115,87 @@ class BillDetail(BaseModel):
     notice: str
 
 
+class BillCard(BaseModel):
+    """피드용 법안 카드 — '논쟁'을 한눈에. 탭하면 상세(BillDetail)로."""
+    id: int
+    title: str
+    committee: str | None
+    proposed_date: date | None
+    yes: int | None
+    no: int | None
+    contested_reason: str  # 왜 골랐는지(사실 기반): "정당 입장 갈림" / "반대 NN표"
+    party_split: bool  # 민주 vs 국힘 다수 입장이 갈렸는가
+    pro: str | None  # AI 요약 좋은점 첫 줄(있으면)
+    con: str | None  # AI 요약 문제점 첫 줄(있으면)
+
+
+class BillFeed(BaseModel):
+    items: list[BillCard]
+    notice: str
+
+
+@router.get("", response_model=BillFeed)
+def list_bills(limit: int = 20, db: Session = Depends(get_db)) -> BillFeed:
+    """큐레이션 피드 — 본회의에서 의견이 갈린 정책 법안을 '논쟁' 순으로.
+
+    🟡 추천이 아니라 사실 기반 선별: 정쟁·절차성 제외, 반대표 많은 순 후보 →
+    정당(민주 vs 국힘) 다수 입장이 갈린 법안을 위로. AI 요약 있으면 좋은점/문제점 한 줄 동봉.
+    """
+    pool = max(limit * 4, 40)
+    q = select(Bill, Vote).join(Vote, Vote.bill_id == Bill.id)
+    for kw in FEED_EXCLUDE:
+        q = q.where(Bill.title.notilike(f"%{kw}%"))
+    q = q.where(Vote.no_total.isnot(None))
+    q = q.order_by(Vote.no_total.desc().nullslast()).limit(pool)
+    rows = db.execute(q).all()
+    if not rows:
+        return BillFeed(items=[], notice=FEED_NOTICE)
+
+    # 후보들의 정당(민주·국힘) 다수 입장 계산 → 갈림 판정(한 번의 집계 쿼리)
+    vote_ids = [v.id for _, v in rows]
+    splits: dict[int, bool] = {}
+    party_rows = db.execute(
+        select(VoteRecord.vote_id, Party.name, VoteRecord.choice, func.count())
+        .join(Person, Person.id == VoteRecord.person_id)
+        .join(Party, Party.id == Person.party_id)
+        .where(VoteRecord.vote_id.in_(vote_ids), Party.name.in_(MAJOR_PARTIES))
+        .group_by(VoteRecord.vote_id, Party.name, VoteRecord.choice)
+    ).all()
+    # vote_id -> party -> {찬,반}
+    tally: dict[int, dict[str, dict[str, int]]] = defaultdict(
+        lambda: defaultdict(lambda: {"y": 0, "n": 0})
+    )
+    for vid, pname, choice, cnt in party_rows:
+        if choice == VoteChoice.찬성:
+            tally[vid][pname]["y"] += cnt
+        elif choice == VoteChoice.반대:
+            tally[vid][pname]["n"] += cnt
+    for vid, parties in tally.items():
+        def major(p: str) -> str | None:
+            t = parties.get(p)
+            if not t or (t["y"] == 0 and t["n"] == 0):
+                return None
+            return "찬" if t["y"] >= t["n"] else "반"
+        a, b = major("더불어민주당"), major("국민의힘")
+        splits[vid] = bool(a and b and a != b)
+
+    cards: list[BillCard] = []
+    for bill, vote in rows:
+        split = splits.get(vote.id, False)
+        reason = "정당 입장이 갈림" if split else f"반대 {vote.no_total}표"
+        pro = bill.summary_pros.split("\n")[0] if bill.summary_pros else None
+        con = bill.summary_cons.split("\n")[0] if bill.summary_cons else None
+        cards.append(BillCard(
+            id=bill.id, title=bill.title, committee=bill.committee,
+            proposed_date=bill.proposed_date, yes=vote.yes_total, no=vote.no_total,
+            contested_reason=reason, party_split=split, pro=pro, con=con,
+        ))
+
+    # 정당 갈림 우선, 그 다음 반대표 많은 순
+    cards.sort(key=lambda c: (c.party_split, c.no or 0), reverse=True)
+    return BillFeed(items=cards[:limit], notice=FEED_NOTICE)
+
+
 def _ensure_content(db: Session, bill: Bill) -> None:
     """본문 미수집 의안이면 likms 의안원문을 그 자리에서 받아 캐싱(on-demand).
 
@@ -126,16 +222,17 @@ def _ensure_summary(db: Session, bill: Bill) -> None:
 
     🟡 원문은 건드리지 않고 좋은점/문제점만 별도 필드에 저장. 양쪽 대칭이 아니면(한쪽 공백)
     summarize_bill 이 (None, None) 을 돌려주며, 그 경우 summary_fetched 를 남기지 않아
-    다음 열람 때 재시도한다. 키 없음/본문 없음/실패는 페이지를 막지 않는다.
+    다음 열람 때 재시도한다. 본문 없음/생성 실패는 페이지를 막지 않는다.
     """
     if bill.summary_fetched is not None:
         return
-    if not settings.gemini_api_key or not (bill.proposal_reason or bill.main_content):
+    if not (bill.proposal_reason or bill.main_content):
         return
     try:
         pros, cons = summarize_bill(
             bill.title, bill.proposal_reason, bill.main_content,
-            api_key=settings.gemini_api_key, model=settings.gemini_model,
+            provider=settings.summary_provider, model=settings.summary_model,
+            api_key=settings.gemini_api_key, base_url=settings.ollama_base_url,
         )
     except Exception:  # noqa: BLE001 — 요약 실패가 법안 페이지를 막지 않도록
         logger.warning("법안 AI 요약 on-demand 생성 실패 bill=%s", bill.id, exc_info=True)
@@ -144,7 +241,7 @@ def _ensure_summary(db: Session, bill: Bill) -> None:
         return
     bill.summary_pros = pros
     bill.summary_cons = cons
-    bill.summary_model = settings.gemini_model
+    bill.summary_model = settings.summary_model
     bill.summary_fetched = datetime.now(timezone.utc)
     db.commit()
 

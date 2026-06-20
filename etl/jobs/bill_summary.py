@@ -33,7 +33,7 @@ def run_bill_summary(
 
     only_missing: summary_fetched 없는 의안만. limit: 생성 의안 상한.
     """
-    if not settings.gemini_api_key:
+    if settings.summary_provider == "gemini" and not settings.gemini_api_key:
         return {"error": "GEMINI_API_KEY 미설정 — 요약 생략", "processed": 0}
 
     q = select(Bill).where(
@@ -52,7 +52,8 @@ def run_bill_summary(
         try:
             pros, cons = summarize_bill(
                 bill.title, bill.proposal_reason, bill.main_content,
-                api_key=settings.gemini_api_key, model=settings.gemini_model,
+                provider=settings.summary_provider, model=settings.summary_model,
+                api_key=settings.gemini_api_key, base_url=settings.ollama_base_url,
             )
             if not pros or not cons:  # 대칭 깨짐 → 저장 안 함(다음에 재시도)
                 n_skip += 1
@@ -60,7 +61,7 @@ def run_bill_summary(
             if not dry_run:
                 bill.summary_pros = pros
                 bill.summary_cons = cons
-                bill.summary_model = settings.gemini_model
+                bill.summary_model = settings.summary_model
                 bill.summary_fetched = _now()
             n_ok += 1
         except Exception:  # noqa: BLE001 — 개별 의안 실패는 건너뛰고 계속

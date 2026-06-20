@@ -6,7 +6,9 @@
   - 판정·찬반 권유 금지. "이 법은 통과돼야/막아야" 류 표현 배제.
   - 어느 모델이 생성했는지는 호출 측에서 summary_model 로 기록(출처 공개).
 
-구현: Google Gemini REST(generateContent)를 urllib 로 호출(의존성 추가 없음 — bill_content 와 동일 방식).
+provider 두 가지를 지원한다(urllib 만 사용 — 의존성 추가 없음):
+  - "ollama" (기본): 로컬 모델(http://localhost:11434). 무료·무제한·데이터 로컬.
+  - "gemini": Google Gemini REST(무료 티어는 일일 호출수 제한이 작음).
 순수 함수(네트워크 + 파싱)만 담는다. DB 적재는 호출 측(backend on-demand / etl 배치).
 """
 from __future__ import annotations
@@ -50,13 +52,9 @@ def _build_prompt(title: str, reason: str | None, main: str | None) -> str:
     return "\n".join(parts)
 
 
-def _parse_response(payload: dict) -> tuple[list[str], list[str]]:
-    """Gemini 응답 → (pros, cons). 형식 어긋나면 ([], []) 로 안전 반환."""
-    try:
-        text = payload["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError, TypeError):
-        return [], []
-    text = text.strip()
+def _parse_json_text(text: str) -> tuple[list[str], list[str]]:
+    """모델이 낸 텍스트(JSON) → (pros, cons). 형식 어긋나면 ([], []) 로 안전 반환."""
+    text = (text or "").strip()
     # ```json … ``` 펜스가 붙어 오면 제거
     if text.startswith("```"):
         text = text.strip("`")
@@ -71,30 +69,11 @@ def _parse_response(payload: dict) -> tuple[list[str], list[str]]:
     return pros, cons
 
 
-def summarize_bill(
-    title: str,
-    reason: str | None,
-    main: str | None,
-    *,
-    api_key: str,
-    model: str = "gemini-2.5-flash",
-    timeout: int = 60,
-) -> tuple[str | None, str | None]:
-    """(좋은점, 문제점) 텍스트. 각 항목은 줄바꿈으로 join. 생성 불가 시 (None, None).
-
-    좋은점/문제점 중 한쪽이라도 비면 대칭이 깨졌다고 보고 (None, None) 반환(중립성).
-    네트워크/파싱 예외는 호출 측에서 처리하도록 그대로 전파한다.
-    """
-    if not api_key or not (reason or main):
-        return None, None
-
+def _call_gemini(prompt: str, *, api_key: str, model: str, timeout: int) -> str:
     body = {
         "system_instruction": {"parts": [{"text": _SYSTEM}]},
-        "contents": [{"parts": [{"text": _build_prompt(title, reason, main)}]}],
-        "generationConfig": {
-            "temperature": 0.3,
-            "responseMimeType": "application/json",
-        },
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"},
     }
     req = urllib.request.Request(
         GEMINI_ENDPOINT.format(model=model),
@@ -103,8 +82,62 @@ def summarize_bill(
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         payload = json.loads(resp.read())
+    try:
+        return payload["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError, TypeError):
+        return ""
 
-    pros, cons = _parse_response(payload)
+
+def _call_ollama(prompt: str, *, base_url: str, model: str, timeout: int) -> str:
+    """로컬 Ollama /api/chat — format:json 으로 구조화 출력. 데이터는 PC 밖으로 안 나간다."""
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": _SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0.3},
+    }
+    req = urllib.request.Request(
+        base_url.rstrip("/") + "/api/chat",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        payload = json.loads(resp.read())
+    return (payload.get("message") or {}).get("content", "")
+
+
+def summarize_bill(
+    title: str,
+    reason: str | None,
+    main: str | None,
+    *,
+    provider: str = "ollama",
+    model: str,
+    api_key: str = "",
+    base_url: str = "http://localhost:11434",
+    timeout: int = 120,
+) -> tuple[str | None, str | None]:
+    """(좋은점, 문제점) 텍스트. 각 항목은 줄바꿈으로 join. 생성 불가 시 (None, None).
+
+    좋은점/문제점 중 한쪽이라도 비면 대칭이 깨졌다고 보고 (None, None) 반환(중립성).
+    네트워크/파싱 예외는 호출 측에서 처리하도록 그대로 전파한다.
+    """
+    if not (reason or main):
+        return None, None
+
+    prompt = _build_prompt(title, reason, main)
+    if provider == "gemini":
+        if not api_key:
+            return None, None
+        text = _call_gemini(prompt, api_key=api_key, model=model, timeout=timeout)
+    else:  # ollama (기본)
+        text = _call_ollama(prompt, base_url=base_url, model=model, timeout=timeout)
+
+    pros, cons = _parse_json_text(text)
     if not pros or not cons:
         return None, None
     return "\n".join(pros), "\n".join(cons)
