@@ -1,4 +1,6 @@
-// 진입 화면 — "나"에서 시작. 정치 용어 0, 법안목록 X (기획서 설계 원칙).
+// 진입 화면 — "나"에서 시작. 설문은 친근한 입구(다크 잉크패널 히어로),
+// 플랫폼(법안·의원·세금)은 게이트 없이 단일 진입 "국회 둘러보기"로 /explore에 모은다.
+// (정치 용어 0, 법안목록 X — 기획서 설계 원칙. 무관심층 진입장벽 0.)
 import Link from "next/link";
 
 import TrackOnMount from "./TrackOnMount";
@@ -19,42 +21,66 @@ export default function Home() {
           margin: "16px 0 0",
         }}
       >
-        뉴스는 안 봐도,
-        <br />
-        내 생각은 있잖아요
+        국회, 내 편 맞아?
       </h1>
 
       <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--ink-700)" }}>
-        정치 잘 몰라도 괜찮아요. 끌리는 쪽만 고르면, 내 생각이 국회의 실제 표결과
-        얼마나 닮았는지 3분 만에 보여드려요.
+        직접 확인해봐요.
+        <br />
+        모르면 당하잖아요.
       </p>
 
-      <Link href="/test" className="btn btn-block" style={{ marginTop: 20 }}>
-        3분 만에 확인하기 →
-      </Link>
-
-      <Link
-        href="/bills"
-        className="btn btn-ghost btn-block"
-        style={{ marginTop: 10 }}
+      {/* 설문 = 친근한 입구. 잉크패널(다크)로 "여기서 시작" 신호. */}
+      <section
+        style={{
+          marginTop: 20,
+          padding: "22px 20px 20px",
+          background: "var(--ink-panel)",
+          borderRadius: "var(--radius-xl)",
+          color: "var(--white)",
+          boxShadow: "var(--shadow-md)",
+        }}
       >
-        의견이 갈린 법안 보기 →
-      </Link>
+        <span
+          style={{
+            display: "inline-block",
+            padding: "3px 10px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--ink-200)",
+            background: "rgba(255,255,255,0.12)",
+            borderRadius: "var(--radius-full)",
+          }}
+        >
+          처음이라면
+        </span>
+        <p
+          style={{
+            fontSize: 16,
+            lineHeight: 1.55,
+            margin: "12px 0 16px",
+            color: "var(--ink-100)",
+          }}
+        >
+          3분이면 내 생각이 국회의 실제 표결과 얼마나 닮았는지 나와요. 닮은
+          의원·정당까지 한 번에.
+        </p>
+        <Link
+          href="/test"
+          className="btn btn-block"
+          style={{ background: "var(--white)", color: "var(--ink-900)" }}
+        >
+          3분 테스트 시작 →
+        </Link>
+      </section>
 
+      {/* 플랫폼 진입 — 게이트 없이 단일 문. 안쪽(/explore)에서 펼친다. */}
       <Link
-        href="/persons"
+        href="/explore"
         className="btn btn-ghost btn-block"
-        style={{ marginTop: 10 }}
+        style={{ marginTop: 12 }}
       >
-        국회의원 둘러보기 →
-      </Link>
-
-      <Link
-        href="/tax"
-        className="btn btn-ghost btn-block"
-        style={{ marginTop: 10 }}
-      >
-        내 세금 어디 쓰이나 보기 →
+        국회 둘러보기 →
       </Link>
 
       <ul
@@ -66,14 +92,9 @@ export default function Home() {
           color: "var(--muted)",
         }}
       >
-        <li>약 3분, 20문항 · 모바일에서 편하게</li>
-        <li>각 문항은 실제 발의·표결된 법안이 출처예요 (▼로 확인)</li>
-        <li>특정 정당을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
+        <li>모든 내용은 실제 발의·표결된 법안이 출처예요</li>
+        <li>특정 정당·인물을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
       </ul>
-
-      <p style={{ marginTop: 24, fontSize: 12.5, color: "var(--muted)" }}>
-        ⚠️ 현재 문항은 외부 교차검토 전 <b>초안</b>입니다(프로토타입).
-      </p>
     </main>
   );
 }
