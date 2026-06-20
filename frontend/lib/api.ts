@@ -181,6 +181,7 @@ export interface BillDetail {
   bill_no: string;
   title: string;
   committee: string | null;
+  category: string | null;
   status: string | null;
   proposed_date: string | null;
   likms_url: string | null;
@@ -218,6 +219,7 @@ export interface BillCard {
   id: number;
   title: string;
   committee: string | null;
+  category: string | null;
   proposed_date: string | null;
   yes: number | null;
   no: number | null;
@@ -232,8 +234,20 @@ export interface BillFeed {
   notice: string;
 }
 
-export function fetchBills(limit = 20): Promise<BillFeed> {
-  return getJSON<BillFeed>(`/api/bills?limit=${limit}`);
+export function fetchBills(limit = 20, category?: string): Promise<BillFeed> {
+  const p = new URLSearchParams({ limit: String(limit) });
+  if (category) p.set("category", category);
+  return getJSON<BillFeed>(`/api/bills?${p.toString()}`);
+}
+
+// 피드에 존재하는 생활 카테고리(세금·노동·주거…) + 건수 — 칩 필터용.
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
+
+export function fetchBillCategories(): Promise<{ items: CategoryCount[] }> {
+  return getJSON<{ items: CategoryCount[] }>(`/api/bills/categories`);
 }
 
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.

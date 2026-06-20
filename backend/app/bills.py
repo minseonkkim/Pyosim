@@ -99,6 +99,7 @@ class BillDetail(BaseModel):
     bill_no: str
     title: str
     committee: str | None
+    category: str | None  # 생활 카테고리(세금·노동·주거…)
     status: str | None
     proposed_date: date | None
     likms_url: str | None
@@ -120,6 +121,7 @@ class BillCard(BaseModel):
     id: int
     title: str
     committee: str | None
+    category: str | None  # 생활 카테고리(세금·노동·주거…) — 미분류면 None
     proposed_date: date | None
     yes: int | None
     no: int | None
@@ -134,18 +136,36 @@ class BillFeed(BaseModel):
     notice: str
 
 
+class CategoryCount(BaseModel):
+    category: str
+    count: int
+
+
+class CategoryList(BaseModel):
+    items: list[CategoryCount]
+
+
+def _feed_filtered(q):
+    """피드 공통 필터 — 정쟁·절차성 제외 + 본회의 반대표 집계 있는 의안만."""
+    for kw in FEED_EXCLUDE:
+        q = q.where(Bill.title.notilike(f"%{kw}%"))
+    return q.where(Vote.no_total.isnot(None))
+
+
 @router.get("", response_model=BillFeed)
-def list_bills(limit: int = 20, db: Session = Depends(get_db)) -> BillFeed:
+def list_bills(
+    limit: int = 20, category: str | None = None, db: Session = Depends(get_db)
+) -> BillFeed:
     """큐레이션 피드 — 본회의에서 의견이 갈린 정책 법안을 '논쟁' 순으로.
 
     🟡 추천이 아니라 사실 기반 선별: 정쟁·절차성 제외, 반대표 많은 순 후보 →
     정당(민주 vs 국힘) 다수 입장이 갈린 법안을 위로. AI 요약 있으면 좋은점/문제점 한 줄 동봉.
+    category(세금·노동·주거…)가 오면 해당 분야로 좁힌다.
     """
     pool = max(limit * 4, 40)
-    q = select(Bill, Vote).join(Vote, Vote.bill_id == Bill.id)
-    for kw in FEED_EXCLUDE:
-        q = q.where(Bill.title.notilike(f"%{kw}%"))
-    q = q.where(Vote.no_total.isnot(None))
+    q = _feed_filtered(select(Bill, Vote).join(Vote, Vote.bill_id == Bill.id))
+    if category:
+        q = q.where(Bill.category == category)
     q = q.order_by(Vote.no_total.desc().nullslast()).limit(pool)
     rows = db.execute(q).all()
     if not rows:
@@ -187,6 +207,7 @@ def list_bills(limit: int = 20, db: Session = Depends(get_db)) -> BillFeed:
         con = bill.summary_cons.split("\n")[0] if bill.summary_cons else None
         cards.append(BillCard(
             id=bill.id, title=bill.title, committee=bill.committee,
+            category=bill.category,
             proposed_date=bill.proposed_date, yes=vote.yes_total, no=vote.no_total,
             contested_reason=reason, party_split=split, pro=pro, con=con,
         ))
@@ -194,6 +215,23 @@ def list_bills(limit: int = 20, db: Session = Depends(get_db)) -> BillFeed:
     # 정당 갈림 우선, 그 다음 반대표 많은 순
     cards.sort(key=lambda c: (c.party_split, c.no or 0), reverse=True)
     return BillFeed(items=cards[:limit], notice=FEED_NOTICE)
+
+
+@router.get("/categories", response_model=CategoryList)
+def list_categories(db: Session = Depends(get_db)) -> CategoryList:
+    """피드에 실제 존재하는 생활 카테고리 + 건수 — 칩 필터용.
+
+    피드와 동일한 필터(정쟁 제외·표결 있음) 위에서 집계해, 칩을 눌렀을 때
+    빈 피드가 나오지 않도록 보장한다. 건수 많은 순.
+    """
+    q = _feed_filtered(
+        select(Bill.category, func.count(func.distinct(Bill.id)))
+        .join(Vote, Vote.bill_id == Bill.id)
+    ).where(Bill.category.isnot(None)).group_by(Bill.category)
+    rows = db.execute(q).all()
+    items = [CategoryCount(category=c, count=n) for c, n in rows]
+    items.sort(key=lambda x: -x.count)
+    return CategoryList(items=items)
 
 
 def _ensure_content(db: Session, bill: Bill) -> None:
@@ -326,7 +364,7 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
 
     return BillDetail(
         id=bill.id, bill_no=bill.bill_no, title=bill.title,
-        committee=bill.committee, status=bill.status,
+        committee=bill.committee, category=bill.category, status=bill.status,
         proposed_date=bill.proposed_date, likms_url=bill.likms_url,
         proposal_reason=bill.proposal_reason, main_content=bill.main_content,
         summary_pros=pros, summary_cons=cons, summary_notice=summary_notice,

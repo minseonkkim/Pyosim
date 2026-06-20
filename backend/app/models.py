@@ -121,6 +121,9 @@ class Bill(Base):
     proposed_date: Mapped[date | None] = mapped_column(Date)
     committee: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str | None] = mapped_column(String(60))
+    # 생활 카테고리(세금·노동·주거 등) — "내 삶과 상관" 강화용 (Phase 1-3b)
+    # 🟡 결정론적 키워드 분류(jobs/categorize.py). 규칙이 코드로 공개됨(알고리즘 공개 원칙).
+    category: Mapped[str | None] = mapped_column(String(20), index=True)
     law_link: Mapped[str | None] = mapped_column(Text)
     likms_url: Mapped[str | None] = mapped_column(Text)  # 의안정보시스템 billId 직링크
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

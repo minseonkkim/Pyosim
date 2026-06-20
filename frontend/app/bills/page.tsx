@@ -6,34 +6,66 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { fetchBills, type BillCard } from "@/lib/api";
+import {
+  fetchBills,
+  fetchBillCategories,
+  type BillCard,
+  type CategoryCount,
+} from "@/lib/api";
 
 export default function BillsFeedPage() {
   const [feed, setFeed] = useState<BillCard[] | null>(null);
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [cats, setCats] = useState<CategoryCount[]>([]);
+  const [active, setActive] = useState<string | null>(null); // 선택 카테고리(없으면 전체)
 
+  // 카테고리 칩은 한 번만 불러온다(피드 필터와 무관하게 고정).
   useEffect(() => {
-    fetchBills(20)
+    fetchBillCategories()
+      .then((r) => setCats(r.items))
+      .catch(() => setCats([]));
+  }, []);
+
+  // 선택 카테고리가 바뀌면 피드를 다시 불러온다.
+  useEffect(() => {
+    setFeed(null);
+    setErr(null);
+    fetchBills(20, active ?? undefined)
       .then((f) => {
         setFeed(f.items);
         setNotice(f.notice);
       })
       .catch((e) => setErr((e as Error).message));
-  }, []);
+  }, [active]);
 
   return (
     <main>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>의견이 갈린 법안</h1>
-      <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>
+      <p className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
         국회에서 표가 팽팽했거나 정당 입장이 갈린 법안들이에요. 어떤 점이 좋고
         무엇이 우려되는지 한눈에 보고, 내 생각과 견줘보세요.
       </p>
 
+      {/* 생활 카테고리 칩 — 내 관심 분야로 좁혀보기 */}
+      {cats.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+          <CatChip label="전체" on={active === null} onClick={() => setActive(null)} />
+          {cats.map((c) => (
+            <CatChip
+              key={c.category}
+              label={`${c.category} ${c.count}`}
+              on={active === c.category}
+              onClick={() => setActive(c.category)}
+            />
+          ))}
+        </div>
+      )}
+
       {err && <p className="disclaimer">⚠️ 불러오지 못했어요: {err}</p>}
       {feed === null && !err && <p className="muted">불러오는 중…</p>}
       {feed !== null && feed.length === 0 && (
-        <p className="muted">아직 보여줄 법안이 없어요.</p>
+        <p className="muted">이 분야엔 아직 보여줄 법안이 없어요.</p>
       )}
 
       {feed?.map((b) => (
@@ -46,6 +78,34 @@ export default function BillsFeedPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function CatChip({
+  label,
+  on,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="chip"
+      style={{
+        fontSize: 12.5,
+        fontWeight: on ? 700 : 500,
+        cursor: "pointer",
+        border: "none",
+        background: on ? "var(--ink-800)" : "var(--ink-100)",
+        color: on ? "#fff" : "var(--muted)",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -71,6 +131,14 @@ function BillCardItem({ b }: { b: BillCard }) {
         >
           {b.party_split ? "⚡ 정당 입장 갈림" : b.contested_reason}
         </span>
+        {b.category && (
+          <span
+            className="chip"
+            style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-800)" }}
+          >
+            #{b.category}
+          </span>
+        )}
         {b.committee && (
           <span className="chip" style={{ fontSize: 11.5 }}>
             {b.committee}

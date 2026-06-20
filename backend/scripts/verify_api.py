@@ -50,7 +50,7 @@ def main() -> int:
     assert r.status_code == 200, r.text
     qs = r.json()["questions"]
     print(f"  문항 {len(qs)}개, notice={r.json()['notice']!r}")
-    assert len(qs) == 8, f"문항 8개 기대, 실제 {len(qs)}"
+    assert len(qs) == 20, f"문항 20개 기대, 실제 {len(qs)}"
     q0 = qs[0]
     print(f"  예시 #{q0['id']} [{q0['issue']}] {q0['body']}")
     print(f"    Ⓐ {q0['option_a']['label']}  /  Ⓑ {q0['option_b']['label']}")
@@ -158,6 +158,7 @@ def main() -> int:
     assert bill["vote"] is None  # 데모: 본회의 표결 없음
     # 본문 필드 노출(데모는 미수집이라 None 허용) — 실데이터는 ETL bill_content 로 채움
     assert "proposal_reason" in bill and "main_content" in bill
+    assert "category" in bill  # 생활 카테고리 필드 노출(데모는 미분류라 None 허용)
     # AI 요약 필드 노출(키 없으면 빈 배열, summary_notice None) — ETL bill_summary 로 채움
     assert bill["summary_pros"] == [] and bill["summary_cons"] == []
     assert bill["summary_notice"] is None
@@ -171,6 +172,19 @@ def main() -> int:
     assert feed["notice"], "🟡 피드 선별 기준 고지 필요"
     assert isinstance(feed["items"], list)  # 데모는 표결 없어 0건 가능
     print(f"  피드 {len(feed['items'])}건 (데모는 표결 없어 0건 정상)")
+    assert all("category" in it for it in feed["items"])  # 카드에 카테고리 필드
+
+    print("\n── GET /api/bills/categories (칩 필터) ──")
+    r = client.get("/api/bills/categories")
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    print(f"  카테고리 {len(items)}종 (데모는 표결 없어 0종 정상)")
+    assert isinstance(items, list)
+    assert all({"category", "count"} <= it.keys() for it in items)
+
+    print("\n── GET /api/bills?category=세금 (분야 필터) ──")
+    r = client.get("/api/bills", params={"category": "세금"})
+    assert r.status_code == 200, r.text  # 분야 필터가 라우팅·쿼리상 동작(데모는 0건 정상)
 
     print("\n✅ API end-to-end 검증 통과")
     return 0
