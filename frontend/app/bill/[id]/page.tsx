@@ -12,6 +12,7 @@ import {
   fetchBillSummary,
   type BillDetail,
   type BillSummary,
+  type PartyVote,
   type Voter,
 } from "@/lib/api";
 import { PartyDot } from "../../persons/PersonBits";
@@ -199,32 +200,18 @@ export default function BillPage() {
             )}
           </div>
 
-          {/* 정당별 찬반 */}
+          {/* 정당별 찬반 — 정당명↔찬반수 양끝 정렬 + 찬:반 비율 막대. 당론 갈린 정당은 칩 표시.
+              🟡 막대는 찬·반만으로 비율(기권·불참은 숫자로만), 색은 정당 도트뿐 — 중립 회색 유지 */}
           {b.party_breakdown.length > 0 && (
             <>
-              <h3 style={{ marginTop: 20, marginBottom: 8, fontSize: 16 }}>정당별 찬반</h3>
-              {b.party_breakdown.map((pb) => {
-                const total = pb.yes + pb.no + pb.abstain + pb.absent || 1;
-                return (
-                  <div key={pb.party} style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 13.5, marginBottom: 3 }}>
-                      <PartyDot color={pb.color_hex} />
-                      <b>{pb.party}</b>{" "}
-                      <span className="muted">
-                        찬 {pb.yes} · 반 {pb.no}
-                        {pb.abstain ? ` · 기 ${pb.abstain}` : ""}
-                        {pb.absent ? ` · 불참 ${pb.absent}` : ""}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", height: 7, borderRadius: 999, overflow: "hidden", background: "var(--ink-100)" }}>
-                      <span style={{ width: `${(pb.yes / total) * 100}%`, background: "var(--ink-800)" }} />
-                      <span style={{ width: `${(pb.no / total) * 100}%`, background: "var(--ink-400)" }} />
-                    </div>
-                  </div>
-                );
-              })}
-              <p className="muted" style={{ fontSize: 11.5 }}>
-                ■ 진한 = 찬성 · ■ 옅은 = 반대
+              <h3 style={{ marginTop: 20, marginBottom: 10, fontSize: 16 }}>정당별 찬반</h3>
+              <div style={{ display: "grid", gap: 12 }}>
+                {b.party_breakdown.map((pb) => (
+                  <PartyBar key={pb.party} pb={pb} />
+                ))}
+              </div>
+              <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>
+                진한 칸 = 찬성 · 옅은 칸 = 반대 · 기권·불참은 막대에서 제외했어요.
               </p>
             </>
           )}
@@ -357,6 +344,56 @@ function ProsCons({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// 정당 한 곳의 찬반 행 — 헤더(정당명 ↔ 찬반수 양끝 정렬) + 찬:반 비율 막대.
+// 막대는 찬·반만으로 100% 채워 비율을 또렷하게(기권·불참 제외). 소수 쪽이 의미 있으면 '당론 갈림'.
+function PartyBar({ pb }: { pb: PartyVote }) {
+  const decided = pb.yes + pb.no;
+  const yesPct = decided ? (pb.yes / decided) * 100 : 0;
+  const minor = Math.min(pb.yes, pb.no);
+  const split = decided >= 4 && minor >= 2 && minor / decided >= 0.15;
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: 8,
+          fontSize: 13.5,
+          marginBottom: 4,
+        }}
+      >
+        <span>
+          <PartyDot color={pb.color_hex} />
+          <b>{pb.party}</b>
+          {split && (
+            <span className="chip" style={{ marginLeft: 6, fontSize: 11 }}>
+              당론 갈림
+            </span>
+          )}
+        </span>
+        <span className="muted numeral" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
+          찬 {pb.yes} · 반 {pb.no}
+          {pb.abstain ? ` · 기 ${pb.abstain}` : ""}
+          {pb.absent ? ` · 불참 ${pb.absent}` : ""}
+        </span>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          height: 14,
+          borderRadius: 999,
+          overflow: "hidden",
+          background: "var(--ink-100)",
+        }}
+      >
+        <span style={{ width: `${yesPct}%`, background: "var(--ink-800)" }} />
+        <span style={{ width: `${100 - yesPct}%`, background: "var(--ink-400)" }} />
+      </div>
     </div>
   );
 }
