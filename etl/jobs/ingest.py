@@ -5,6 +5,7 @@
   bills         본회의 표결된 의안 + 집계     ncocpgfiaoituanbr  → Bill, Vote
   vote_records  의안별 의원 찬/반/기권        nojepdqqaweusdfbi  → VoteRecord
   proposers     발의법률안 + 대표발의자 연결   nzmimeepazxkubdpn  → Bill(+proposer_id)
+  proposer_kinds 제안자 구분(정부·위원장)        TVBPMBILL11        → Bill(+proposer_kind/text)
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
@@ -24,6 +25,7 @@ SVC_MEMBERS = "nwvrqwxyaytdsfvhu"  # 현직 의원
 SVC_BILLS = "ncocpgfiaoituanbr"  # 의안별 표결현황(집계)
 SVC_VOTE_RECORDS = "nojepdqqaweusdfbi"  # 의원별 본회의 표결정보
 SVC_PROPOSED = "nzmimeepazxkubdpn"  # 발의법률안 (대표발의자 RST_MONA_CD)
+SVC_BILL_SEARCH = "TVBPMBILL11"  # 의안검색 — 제안자 구분(PROPOSER_KIND: 의원/정부/위원장)
 SVC_ALLMEMBER = "ALLNAMEMBER"  # 역대 의원 통합 — 사진(NAAS_PIC). NAAS_CD == MONA_CD
 DEFAULT_AGE = "22"
 
@@ -338,3 +340,43 @@ def run_proposers(
         "new_bill": n_new, "updated_bill": n_upd,
         "linked": n_linked, "no_person": n_nolink,
     }
+
+
+# ───────────────────────── proposer_kinds (제안자 구분) ─────────────────────────
+def run_proposer_kinds(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """의안 제안자 구분(정부·위원장·의원) 보강 — 의안검색(TVBPMBILL11).
+
+    발의법률안 API(nzmimeepazxkubdpn)는 의원발의만 담아 정부·위원장 제출안은
+    대표발의자가 비어 보인다. 의안검색 API 는 PROPOSER_KIND(의원/정부/위원장)와
+    PROPOSER 텍스트("정부", "정무위원장", "홍길동의원 등 10인")를 모든 의안에 제공한다.
+    우리 DB 에 이미 있는 의안(표결·발의로 적재)만 의안번호로 매칭해 채운다(신규 생성 X).
+
+    🟡 의원 대표발의는 proposer_id(프로필 링크)가 우선 — 여기 텍스트는 그 외 케이스 표시용.
+    🟡 정부안 소관부처(○○부)는 API 에 없어 PROPOSER 는 "정부" 까지만 담긴다(멱등 upsert).
+    """
+    bills = {b.bill_no: b for b in session.scalars(select(Bill)).all()}
+    if not bills:
+        return {"error": "법안 데이터 없음 — bills/proposers 잡 먼저 실행"}
+
+    n_match = n_set = 0
+    for row in client.iter_rows(SVC_BILL_SEARCH, params={"AGE": age}, max_rows=limit):
+        bill_no = (row.get("BILL_NO") or "").strip()
+        bill = bills.get(bill_no)
+        if bill is None:
+            continue
+        n_match += 1
+        kind = (row.get("PROPOSER_KIND") or "").strip() or None
+        text = (row.get("PROPOSER") or "").strip() or None
+        if not kind and not text:
+            continue
+        bill.proposer_kind = kind
+        bill.proposer_text = text
+        bill.last_verified = _now()
+        n_set += 1
+
+    if not dry_run:
+        session.commit()
+    return {"matched": n_match, "set": n_set, "of_bills": len(bills)}

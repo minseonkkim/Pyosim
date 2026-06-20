@@ -118,6 +118,11 @@ class Bill(Base):
     assembly_bill_id: Mapped[str | None] = mapped_column(String(60), index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     proposer_id: Mapped[int | None] = mapped_column(ForeignKey("person.id"))
+    # 의원 외 제안자(정부·위원장·전직의원) 표기용 — proposer_id 가 없을 때 화면에 표시.
+    # 출처: 의안검색 OpenAPI(TVBPMBILL11) PROPOSER_KIND / PROPOSER.
+    # 🟡 정부안 소관부처(○○부)는 API 에 없어 PROPOSER 는 "정부" 까지만 제공된다.
+    proposer_kind: Mapped[str | None] = mapped_column(String(20))  # 의원/정부/위원장
+    proposer_text: Mapped[str | None] = mapped_column(String(200))  # 예: "정부", "정무위원장"
     proposed_date: Mapped[date | None] = mapped_column(Date)
     committee: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str | None] = mapped_column(String(60))

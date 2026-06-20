@@ -157,6 +157,20 @@ export default function BillPage() {
         </Link>
       )}
 
+      {/* 의원 외 제안자(정부·위원장·전직의원) — 프로필 링크 없음, 사실 표기만.
+          🟡 정부안 소관부처(○○부)는 공식 API 에 없어 "정부"까지만 표시한다. */}
+      {!b.proposer && b.proposer_text && (
+        <div
+          className="card"
+          style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}
+        >
+          <span className="muted" style={{ fontSize: 13 }}>
+            {b.proposer_kind === "정부" ? "제출" : "대표발의"}
+          </span>
+          <span style={{ fontWeight: 700 }}>{b.proposer_text}</span>
+        </div>
+      )}
+
       {/* 처리 funnel */}
       <h3 style={{ marginTop: 24, marginBottom: 8 }}>처리 단계</h3>
       <div style={{ display: "flex", gap: 6 }}>

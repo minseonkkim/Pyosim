@@ -6,9 +6,12 @@
   python -m jobs.run --job photos               # 의원 사진(ALLNAMEMBER NAAS_PIC)
   python -m jobs.run --job bills
   python -m jobs.run --job vote_records --limit 20
+  python -m jobs.run --job proposers                  # 발의법률안 + 대표발의자(의원) 연결
+  python -m jobs.run --job proposer_kinds             # 제안자 구분(정부·위원장) 보강
   python -m jobs.run --job propose_dates --limit 50   # likms 상세 '제안일자' → 발의일(대안 보강)
   python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
   python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
+  python -m jobs.run --job categorize                 # 제목 키워드 → 생활 카테고리(세금·노동·주거…)
   python -m jobs.run --job bills --dry-run            # 미기록(미리보기, DB 연결은 필요)
 
 키는 etl/.env 의 ASSEMBLY_API_KEY·GEMINI_API_KEY, DB 는 DATABASE_URL.
@@ -126,6 +129,21 @@ def _proposers(args) -> None:
     print(f"proposers 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("proposer_kinds")
+def _proposer_kinds(args) -> None:
+    # 의안검색(TVBPMBILL11) → 제안자 구분(정부·위원장·의원) 보강. 정부안 빈칸 표기용.
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_proposer_kinds(
+            session, _build_client(), age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"proposer_kinds 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
 @register("propose_dates")
 def _propose_dates(args) -> None:
     # likms 의안 상세 '제안일자' → Bill.proposed_date (표결된 대안 등 발의일 누락분 보강)
@@ -169,6 +187,19 @@ def _bill_summary(args) -> None:
     finally:
         session.close()
     print(f"bill_summary 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("categorize")
+def _categorize(args) -> None:
+    # 제목 키워드(+위원회 폴백) → Bill.category (세금·노동·주거 등). 결정론적, API 불필요.
+    from jobs import categorize
+
+    session = _build_session()
+    try:
+        stats = categorize.run_categorize(session, dry_run=args.dry_run, limit=args.limit)
+    finally:
+        session.close()
+    print(f"categorize 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("budget")

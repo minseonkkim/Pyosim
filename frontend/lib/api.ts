@@ -191,6 +191,8 @@ export interface BillDetail {
   summary_cons: string[];
   summary_notice: string | null;
   proposer: ProposerBrief | null;
+  proposer_kind: string | null; // 의원/정부/위원장
+  proposer_text: string | null; // 예: "정부", "정무위원장" — proposer 없을 때 표시
   vote: VoteAggregate | null;
   party_breakdown: PartyVote[];
   voters: Voter[];

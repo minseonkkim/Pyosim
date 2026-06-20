@@ -108,7 +108,9 @@ class BillDetail(BaseModel):
     summary_pros: list[str]  # AI 참고 요약 — 좋은점(대칭)
     summary_cons: list[str]  # AI 참고 요약 — 문제점(대칭)
     summary_notice: str | None  # AI 요약이 있을 때만 동봉하는 🟡 고지
-    proposer: ProposerBrief | None
+    proposer: ProposerBrief | None  # 의원 대표발의(프로필 링크). 정부·위원장안은 None
+    proposer_kind: str | None  # 의원/정부/위원장 — proposer 가 없을 때 표기 분기용
+    proposer_text: str | None  # 예: "정부", "정무위원장" — proposer 가 없을 때 화면 표시
     vote: VoteAggregate | None  # 본회의 집계(있는 경우)
     party_breakdown: list[PartyVote]  # 정당별 찬반(의원별 기록 있을 때)
     voters: list[Voter]  # 표결 의원 → 프로필 연결(그물망)
@@ -368,7 +370,8 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         proposed_date=bill.proposed_date, likms_url=bill.likms_url,
         proposal_reason=bill.proposal_reason, main_content=bill.main_content,
         summary_pros=pros, summary_cons=cons, summary_notice=summary_notice,
-        proposer=proposer, vote=vote_out,
+        proposer=proposer, proposer_kind=bill.proposer_kind,
+        proposer_text=bill.proposer_text, vote=vote_out,
         party_breakdown=party_breakdown, voters=voters, funnel=funnel,
         notice=NOTICE,
     )
