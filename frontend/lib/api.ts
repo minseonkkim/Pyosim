@@ -79,6 +79,7 @@ export interface BillBrief {
   title: string;
   status: string | null;
   likms_url: string | null;
+  proposed_date: string | null;
 }
 
 export interface CriminalRecordOut {

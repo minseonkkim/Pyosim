@@ -10,6 +10,12 @@ import Link from "next/link";
 import { fetchPerson, type PersonProfile } from "@/lib/api";
 import { Avatar, PartyDot } from "../../persons/PersonBits";
 
+// 타임라인용 날짜 표기: "2024-06-15" → "2024.06.15" (없으면 "날짜 미상")
+function fmtTimelineDate(d: string | null): string {
+  if (!d) return "날짜 미상";
+  return d.slice(0, 10).replace(/-/g, ".");
+}
+
 export default function PersonPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
@@ -95,20 +101,64 @@ export default function PersonPage() {
           대표발의 데이터는 아직 연결 전이에요. (발의자 정보 연동 예정)
         </p>
       ) : (
-        p.proposed_bills.map((b) => (
-          <Link
-            key={b.id}
-            href={`/bill/${b.id}`}
-            className="card"
-            style={{ display: "block", textDecoration: "none" }}
-          >
-            <div style={{ fontWeight: 600, color: "var(--fg)" }}>{b.title}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              의안 {b.bill_no}
-              {b.status ? ` · ${b.status}` : ""} →
+        <div style={{ position: "relative" }}>
+          {/* 세로 타임라인 축 — 날짜(왼쪽) · 점 · 법안 카드(오른쪽) */}
+          <div
+            style={{
+              position: "absolute",
+              left: 71,
+              top: 6,
+              bottom: 6,
+              width: 2,
+              background: "var(--border)",
+            }}
+          />
+          {p.proposed_bills.map((b) => (
+            <div key={b.id} style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+              {/* 날짜 */}
+              <div
+                className="muted"
+                style={{
+                  width: 60,
+                  flexShrink: 0,
+                  fontSize: 12.5,
+                  textAlign: "right",
+                  paddingTop: 14,
+                  lineHeight: 1.3,
+                }}
+              >
+                {fmtTimelineDate(b.proposed_date)}
+              </div>
+              {/* 점 */}
+              <div style={{ position: "relative", width: 2, flexShrink: 0 }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    left: -4,
+                    top: 16,
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: "var(--primary)",
+                    border: "2px solid var(--bg)",
+                  }}
+                />
+              </div>
+              {/* 법안 카드 */}
+              <Link
+                href={`/bill/${b.id}`}
+                className="card"
+                style={{ display: "block", textDecoration: "none", flex: 1, marginLeft: 8 }}
+              >
+                <div style={{ fontWeight: 600, color: "var(--fg)" }}>{b.title}</div>
+                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                  의안 {b.bill_no}
+                  {b.status ? ` · ${b.status}` : ""} →
+                </div>
+              </Link>
             </div>
-          </Link>
-        ))
+          ))}
+        </div>
       )}
       {p.proposed_count > p.proposed_bills.length && (
         <p className="muted" style={{ fontSize: 13 }}>

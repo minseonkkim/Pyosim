@@ -54,6 +54,7 @@ class BillBrief(BaseModel):
     title: str
     status: str | None
     likms_url: str | None
+    proposed_date: date | None
 
 
 class CriminalOut(BaseModel):
@@ -175,6 +176,7 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
             BillBrief(
                 id=b.id, bill_no=b.bill_no, title=b.title,
                 status=b.status, likms_url=b.likms_url,
+                proposed_date=b.proposed_date,
             )
             for b in proposed
         ],
