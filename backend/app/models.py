@@ -129,6 +129,13 @@ class Bill(Base):
     main_content: Mapped[str | None] = mapped_column(Text)  # 주요내용
     content_fetched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # AI 참고 요약 — 원문(위)에서 LLM 이 생성한 좋은점/문제점 (Phase 1-3)
+    # 🟡 원문과 분리된 별도 필드. 양쪽 대칭 생성. summary_model 로 생성 출처 공개.
+    summary_pros: Mapped[str | None] = mapped_column(Text)  # 좋은점(줄바꿈 구분)
+    summary_cons: Mapped[str | None] = mapped_column(Text)  # 문제점(줄바꿈 구분)
+    summary_model: Mapped[str | None] = mapped_column(String(60))  # 생성 모델명
+    summary_fetched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # 🟡 출처·검증
     source_url: Mapped[str | None] = mapped_column(Text)
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

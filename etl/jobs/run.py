@@ -5,9 +5,11 @@
   python -m jobs.run --job members
   python -m jobs.run --job bills
   python -m jobs.run --job vote_records --limit 20
+  python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
+  python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
   python -m jobs.run --job bills --dry-run            # 미기록(미리보기, DB 연결은 필요)
 
-키는 etl/.env 의 ASSEMBLY_API_KEY, DB 는 DATABASE_URL.
+키는 etl/.env 의 ASSEMBLY_API_KEY·GEMINI_API_KEY, DB 는 DATABASE_URL.
 """
 from __future__ import annotations
 
@@ -114,6 +116,21 @@ def _bill_content(args) -> None:
     finally:
         session.close()
     print(f"bill_content 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("bill_summary")
+def _bill_summary(args) -> None:
+    # 제안이유·주요내용 원문 → 좋은점/문제점(양쪽 대칭) AI 생성 (Gemini, client 불필요)
+    from jobs import bill_summary
+
+    session = _build_session()
+    try:
+        stats = bill_summary.run_bill_summary(
+            session, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"bill_summary 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 def main(argv: list[str] | None = None) -> int:

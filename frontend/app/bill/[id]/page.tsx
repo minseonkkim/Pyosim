@@ -80,6 +80,24 @@ export default function BillPage() {
         </section>
       )}
 
+      {/* AI 참고 요약 — 좋은점/문제점(양쪽 대칭). 🟡 공식 원문과 분리, AI 생성 명시 */}
+      {b.summary_pros.length > 0 && b.summary_cons.length > 0 && (
+        <section style={{ marginTop: 20 }}>
+          <h3 style={{ marginBottom: 4 }}>
+            AI 참고 요약 <span className="chip" style={{ fontSize: 11 }}>AI 생성</span>
+          </h3>
+          <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+            <ProsCons label="좋은점" items={b.summary_pros} tone="pro" />
+            <ProsCons label="문제점·우려" items={b.summary_cons} tone="con" />
+          </div>
+          {b.summary_notice && (
+            <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+              ⚠️ {b.summary_notice}
+            </p>
+          )}
+        </section>
+      )}
+
       {/* 대표발의자 → 프로필(그물망) */}
       {b.proposer && (
         <Link
@@ -228,6 +246,35 @@ function BodyText({ text }: { text: string }) {
       }}
     >
       {text}
+    </div>
+  );
+}
+
+function ProsCons({
+  label,
+  items,
+  tone,
+}: {
+  label: string;
+  items: string[];
+  tone: "pro" | "con";
+}) {
+  return (
+    <div
+      className="card"
+      style={{
+        background: "var(--ink-50)",
+        borderLeft: `3px solid ${tone === "pro" ? "var(--ink-800)" : "var(--ink-400)"}`,
+      }}
+    >
+      <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6 }}>{label}</div>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+        {items.map((it, i) => (
+          <li key={i} style={{ wordBreak: "keep-all" }}>
+            {it}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -179,6 +179,9 @@ export interface BillDetail {
   likms_url: string | null;
   proposal_reason: string | null;
   main_content: string | null;
+  summary_pros: string[];
+  summary_cons: string[];
+  summary_notice: string | null;
   proposer: ProposerBrief | null;
   vote: VoteAggregate | null;
   party_breakdown: PartyVote[];

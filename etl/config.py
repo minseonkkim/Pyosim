@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     assembly_api_key: str = ""
     nec_api_key: str = ""
     data_go_kr_api_key: str = ""
+    # AI 요약(좋은점/문제점) — Google Gemini
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     database_url: str = "postgresql+psycopg://pyosim:pyosim@localhost:5432/pyosim"
 
 

@@ -158,6 +158,9 @@ def main() -> int:
     assert bill["vote"] is None  # 데모: 본회의 표결 없음
     # 본문 필드 노출(데모는 미수집이라 None 허용) — 실데이터는 ETL bill_content 로 채움
     assert "proposal_reason" in bill and "main_content" in bill
+    # AI 요약 필드 노출(키 없으면 빈 배열, summary_notice None) — ETL bill_summary 로 채움
+    assert bill["summary_pros"] == [] and bill["summary_cons"] == []
+    assert bill["summary_notice"] is None
     assert client.get("/api/bills/999999").status_code == 404
 
     print("\n✅ API end-to-end 검증 통과")

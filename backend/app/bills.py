@@ -20,6 +20,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.bill_content import fetch_bill_content
+from app.bill_summary import summarize_bill
+from app.config import settings
 from app.db import get_db
 from app.models import Bill, Party, Person, Vote, VoteChoice, VoteRecord
 from app.persons import PartyBrief
@@ -31,6 +33,12 @@ router = APIRouter(prefix="/api/bills", tags=["bills"])
 NOTICE = (
     "법안 정보와 표결 기록은 국회 의안정보시스템·열린국회정보의 공식 데이터입니다. "
     "사실만 표시하며 가치 판단을 담지 않습니다."
+)
+
+SUMMARY_NOTICE = (
+    "아래 좋은점·문제점은 공식 원문이 아니라 AI({model})가 제안이유·주요내용을 바탕으로 "
+    "양쪽을 대칭되게 정리한 참고용 요약입니다. 찬반 판단은 담지 않으며, 판단은 원문을 보고 "
+    "직접 하시길 권합니다."
 )
 
 
@@ -81,6 +89,9 @@ class BillDetail(BaseModel):
     likms_url: str | None
     proposal_reason: str | None  # 제안이유(또는 제안이유 및 주요내용) — 의안원문 공식 텍스트
     main_content: str | None  # 주요내용(분리형일 때)
+    summary_pros: list[str]  # AI 참고 요약 — 좋은점(대칭)
+    summary_cons: list[str]  # AI 참고 요약 — 문제점(대칭)
+    summary_notice: str | None  # AI 요약이 있을 때만 동봉하는 🟡 고지
     proposer: ProposerBrief | None
     vote: VoteAggregate | None  # 본회의 집계(있는 경우)
     party_breakdown: list[PartyVote]  # 정당별 찬반(의원별 기록 있을 때)
@@ -110,14 +121,43 @@ def _ensure_content(db: Session, bill: Bill) -> None:
     db.commit()
 
 
+def _ensure_summary(db: Session, bill: Bill) -> None:
+    """본문이 있으나 AI 요약이 없으면 그 자리에서 생성해 캐싱(on-demand).
+
+    🟡 원문은 건드리지 않고 좋은점/문제점만 별도 필드에 저장. 양쪽 대칭이 아니면(한쪽 공백)
+    summarize_bill 이 (None, None) 을 돌려주며, 그 경우 summary_fetched 를 남기지 않아
+    다음 열람 때 재시도한다. 키 없음/본문 없음/실패는 페이지를 막지 않는다.
+    """
+    if bill.summary_fetched is not None:
+        return
+    if not settings.gemini_api_key or not (bill.proposal_reason or bill.main_content):
+        return
+    try:
+        pros, cons = summarize_bill(
+            bill.title, bill.proposal_reason, bill.main_content,
+            api_key=settings.gemini_api_key, model=settings.gemini_model,
+        )
+    except Exception:  # noqa: BLE001 — 요약 실패가 법안 페이지를 막지 않도록
+        logger.warning("법안 AI 요약 on-demand 생성 실패 bill=%s", bill.id, exc_info=True)
+        return
+    if not pros or not cons:  # 대칭 깨짐 → 저장 안 하고 다음에 재시도
+        return
+    bill.summary_pros = pros
+    bill.summary_cons = cons
+    bill.summary_model = settings.gemini_model
+    bill.summary_fetched = datetime.now(timezone.utc)
+    db.commit()
+
+
 @router.get("/{bid}", response_model=BillDetail)
 def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
     bill = db.get(Bill, bid)
     if bill is None:
         raise HTTPException(status_code=404, detail="해당 법안을 찾을 수 없습니다.")
 
-    # 본문 미수집이면 그 자리에서 받아 캐싱(on-demand)
+    # 본문 미수집이면 그 자리에서 받아 캐싱(on-demand) → 본문 위에 AI 요약도 보강
     _ensure_content(db, bill)
+    _ensure_summary(db, bill)
 
     # 대표발의자
     proposer = None
@@ -180,11 +220,19 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         FunnelStep(label="처리", done=bool(bill.status)),
     ]
 
+    pros = bill.summary_pros.split("\n") if bill.summary_pros else []
+    cons = bill.summary_cons.split("\n") if bill.summary_cons else []
+    summary_notice = (
+        SUMMARY_NOTICE.format(model=bill.summary_model or "생성 모델")
+        if (pros and cons) else None
+    )
+
     return BillDetail(
         id=bill.id, bill_no=bill.bill_no, title=bill.title,
         committee=bill.committee, status=bill.status,
         proposed_date=bill.proposed_date, likms_url=bill.likms_url,
         proposal_reason=bill.proposal_reason, main_content=bill.main_content,
+        summary_pros=pros, summary_cons=cons, summary_notice=summary_notice,
         proposer=proposer, vote=vote_out,
         party_breakdown=party_breakdown, voters=voters, funnel=funnel,
         notice=NOTICE,
