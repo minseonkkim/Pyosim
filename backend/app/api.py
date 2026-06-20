@@ -116,7 +116,10 @@ def _option(label, pro, con) -> Option:
 
 def _public_questions(db: Session, preview: bool) -> list[Question]:
     stmt = select(Question)
-    if not preview:
+    if preview:
+        # 미리보기: 초안·검토중까지 보여주되, 교체·반려된 아카이브는 제외.
+        stmt = stmt.where(Question.status != QuestionStatus.아카이브)
+    else:
         stmt = stmt.where(Question.status == QuestionStatus.승인)
     stmt = stmt.order_by(Question.id)
     return list(db.scalars(stmt).all())
