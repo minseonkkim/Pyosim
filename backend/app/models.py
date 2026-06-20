@@ -81,6 +81,12 @@ class Person(Base):
     photo_url: Mapped[str | None] = mapped_column(Text)
     attendance_rate: Mapped[float | None] = mapped_column()
 
+    # 인적 사항(열린국회정보 의원 API) — 프로필 보강
+    birth_date: Mapped[date | None] = mapped_column(Date)  # 생년월일(BTH_DATE)
+    gender: Mapped[str | None] = mapped_column(String(10))  # 성별(SEX_GBN_NM)
+    term_label: Mapped[str | None] = mapped_column(String(20))  # 선수(REELE_GBN_NM: 초선/재선…)
+    position: Mapped[str | None] = mapped_column(String(60))  # 직책(JOB_RES_NM: 위원/위원장…)
+
     # 🟡 출처·검증
     profile_source_url: Mapped[str | None] = mapped_column(Text)
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

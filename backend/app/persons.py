@@ -78,6 +78,11 @@ class PersonProfile(BaseModel):
     party: PartyBrief | None
     district: str | None
     photo_url: str | None
+    birth_date: date | None
+    age: int | None
+    gender: str | None
+    term_label: str | None  # 선수(초선/재선…)
+    position: str | None  # 직책(위원/위원장…)
     attendance_rate: float | None
     profile_source_url: str | None
     last_verified: datetime | None
@@ -90,6 +95,13 @@ class PersonProfile(BaseModel):
 
 def _party_brief(p: Party | None) -> PartyBrief | None:
     return PartyBrief(name=p.name, color_hex=p.color_hex) if p else None
+
+
+def _age(birth: date | None) -> int | None:
+    if birth is None:
+        return None
+    today = date.today()
+    return today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
 
 
 # ───────────────────────── 엔드포인트 ─────────────────────────
@@ -150,6 +162,11 @@ def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
         party=_party_brief(person.party),
         district=person.district,
         photo_url=person.photo_url,
+        birth_date=person.birth_date,
+        age=_age(person.birth_date),
+        gender=person.gender,
+        term_label=person.term_label,
+        position=person.position,
         attendance_rate=person.attendance_rate,
         profile_source_url=person.profile_source_url,
         last_verified=person.last_verified,

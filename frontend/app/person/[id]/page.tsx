@@ -64,6 +64,20 @@ export default function PersonPage() {
             {p.party?.name ?? "무소속"}
             {p.district ? ` · ${p.district}` : ""}
           </div>
+          {(() => {
+            // 인적사항 — 국회 공식 데이터 기준 사실만(선수·나이·성별·직책)
+            const bits = [
+              p.term_label,
+              p.age != null ? `${p.age}세` : null,
+              p.gender,
+              p.position,
+            ].filter(Boolean);
+            return bits.length ? (
+              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                {bits.join(" · ")}
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 

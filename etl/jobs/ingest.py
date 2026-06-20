@@ -70,6 +70,10 @@ def run_members(
             continue
         party_name = (row.get("POLY_NM") or "").strip() or None
         district = (row.get("ORIG_NM") or "").strip() or None
+        birth_date = _parse_date(row.get("BTH_DATE"))
+        gender = (row.get("SEX_GBN_NM") or "").strip() or None
+        term_label = (row.get("REELE_GBN_NM") or "").strip() or None
+        position = (row.get("JOB_RES_NM") or "").strip() or None
 
         party = parties.get(party_name) if party_name else None
         if party_name and party is None:
@@ -92,6 +96,10 @@ def run_members(
         person.name = name
         person.district = district
         person.party = party
+        person.birth_date = birth_date
+        person.gender = gender
+        person.term_label = term_label
+        person.position = position
         person.profile_source_url = MEMBER_SOURCE
         person.last_verified = _now()
 

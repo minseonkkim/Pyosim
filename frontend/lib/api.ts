@@ -103,6 +103,11 @@ export interface PersonProfile {
   party: PartyBrief | null;
   district: string | null;
   photo_url: string | null;
+  birth_date: string | null;
+  age: number | null;
+  gender: string | null;
+  term_label: string | null;
+  position: string | null;
   attendance_rate: number | null;
   profile_source_url: string | null;
   last_verified: string | null;
