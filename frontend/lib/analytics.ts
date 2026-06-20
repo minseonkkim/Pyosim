@@ -7,7 +7,6 @@ import { getSessionId } from "./session";
 
 export type EventName =
   | "landing"
-  | "explore"
   | "test_start"
   | "question_view"
   | "answer"

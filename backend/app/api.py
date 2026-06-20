@@ -269,7 +269,6 @@ def compute_results(
 ALLOWED_EVENTS: frozenset[str] = frozenset(
     {
         "landing",        # 진입 화면 노출
-        "explore",        # 국회 둘러보기 허브 노출(플랫폼 진입)
         "test_start",     # 테스트 진입(문항 로드)
         "question_view",  # 문항 노출 (props: idx, total)
         "answer",         # 답변 선택 (props: idx, choice)

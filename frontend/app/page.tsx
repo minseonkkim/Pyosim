@@ -1,9 +1,45 @@
 // 진입 화면 — "나"에서 시작. 설문은 친근한 입구(다크 잉크패널 히어로),
-// 플랫폼(법안·의원·세금)은 게이트 없이 단일 진입 "국회 둘러보기"로 /explore에 모은다.
+// 플랫폼(법안·의원·세금·우리동네)은 게이트 없이 그 아래 2×2 카드로 바로 펼친다.
 // (정치 용어 0, 법안목록 X — 기획서 설계 원칙. 무관심층 진입장벽 0.)
 import Link from "next/link";
 
 import TrackOnMount from "./TrackOnMount";
+
+type Door = {
+  href: string;
+  emoji: string;
+  title: string;
+  desc: string;
+  disabled?: boolean;
+};
+
+const DOORS: Door[] = [
+  {
+    href: "/bills",
+    emoji: "⚖️",
+    title: "갈린 법안",
+    desc: "표가 팽팽했거나 정당 입장이 갈렸던 법안만",
+  },
+  {
+    href: "/persons",
+    emoji: "👥",
+    title: "국회의원",
+    desc: "현역 300명 — 발의·표결 기록을 한 곳에서",
+  },
+  {
+    href: "/tax",
+    emoji: "🧾",
+    title: "내 세금",
+    desc: "내 월급에서 떼인 세금이 어디 쓰이는지",
+  },
+  {
+    href: "#",
+    emoji: "🏘",
+    title: "우리 동네",
+    desc: "주소로 내 지역구·내 의원 찾기",
+    disabled: true,
+  },
+];
 
 export default function Home() {
   return (
@@ -74,14 +110,19 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* 플랫폼 진입 — 게이트 없이 단일 문. 안쪽(/explore)에서 펼친다. */}
-      <Link
-        href="/explore"
-        className="btn btn-ghost btn-block"
-        style={{ marginTop: 12 }}
+      {/* 플랫폼 진입 — 게이트 없이 진입 화면에 바로. 구분되는 2×2 카드. */}
+      <div
+        style={{
+          marginTop: 12,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+        }}
       >
-        국회 둘러보기 →
-      </Link>
+        {DOORS.map((d) => (
+          <DoorCard key={d.title} door={d} />
+        ))}
+      </div>
 
       <ul
         style={{
@@ -96,5 +137,60 @@ export default function Home() {
         <li>특정 정당·인물을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
       </ul>
     </main>
+  );
+}
+
+function DoorCard({ door }: { door: Door }) {
+  const inner = (
+    <>
+      <div style={{ fontSize: 24, lineHeight: 1 }}>{door.emoji}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10 }}>
+        {door.title}
+        {door.disabled && (
+          <span
+            className="chip"
+            style={{ marginLeft: 6, fontSize: 10.5, padding: "2px 7px" }}
+          >
+            준비중
+          </span>
+        )}
+      </div>
+      <div
+        style={{
+          fontSize: 12.5,
+          lineHeight: 1.5,
+          color: "var(--muted)",
+          marginTop: 4,
+        }}
+      >
+        {door.desc}
+      </div>
+    </>
+  );
+
+  const cardStyle: React.CSSProperties = {
+    display: "block",
+    padding: "16px 16px 18px",
+    minHeight: 128,
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    boxShadow: "var(--shadow-sm)",
+    textDecoration: "none",
+    color: "var(--fg)",
+  };
+
+  if (door.disabled) {
+    return (
+      <div style={{ ...cardStyle, opacity: 0.55, cursor: "not-allowed" }}>
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={door.href} style={cardStyle}>
+      {inner}
+    </Link>
   );
 }
