@@ -10,17 +10,21 @@
 """
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.bill_content import fetch_bill_content
 from app.db import get_db
 from app.models import Bill, Party, Person, Vote, VoteChoice, VoteRecord
 from app.persons import PartyBrief
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/bills", tags=["bills"])
 
@@ -85,11 +89,35 @@ class BillDetail(BaseModel):
     notice: str
 
 
+def _ensure_content(db: Session, bill: Bill) -> None:
+    """본문 미수집 의안이면 likms 의안원문을 그 자리에서 받아 캐싱(on-demand).
+
+    클릭한 법안은 (likms 에 원문이 있는 한) 항상 본문이 보이도록 보장한다.
+    🟡 원문 그대로 저장(요약·판정 없음). 출처 = likms billDetail.
+    네트워크/파싱 실패는 페이지를 막지 않도록 삼키고, content_fetched 를 남기지 않아
+    다음 열람 때 재시도한다.
+    """
+    if bill.content_fetched is not None or not bill.assembly_bill_id:
+        return
+    try:
+        reason, main = fetch_bill_content(bill.assembly_bill_id)
+    except Exception:  # noqa: BLE001 — 본문 수집 실패가 법안 페이지를 막지 않도록
+        logger.warning("법안 본문 on-demand 수집 실패 bill=%s", bill.id, exc_info=True)
+        return
+    bill.proposal_reason = reason
+    bill.main_content = main
+    bill.content_fetched = datetime.now(timezone.utc)
+    db.commit()
+
+
 @router.get("/{bid}", response_model=BillDetail)
 def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
     bill = db.get(Bill, bid)
     if bill is None:
         raise HTTPException(status_code=404, detail="해당 법안을 찾을 수 없습니다.")
+
+    # 본문 미수집이면 그 자리에서 받아 캐싱(on-demand)
+    _ensure_content(db, bill)
 
     # 대표발의자
     proposer = None

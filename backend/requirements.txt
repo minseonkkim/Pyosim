@@ -6,3 +6,5 @@ psycopg[binary]==3.2.3
 pydantic==2.10.4
 pydantic-settings==2.7.0
 python-dotenv==1.0.1
+# 법안 본문 on-demand 수집 — 의안원문 HWP(OLE) BodyText 파싱
+olefile==0.47
