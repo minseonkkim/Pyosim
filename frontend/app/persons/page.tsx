@@ -3,17 +3,20 @@
 // 정치인 목록 (Phase 1-2) — 그물망 '사람' 축 입구.
 // 🟡 모든 의원을 같은 양식으로. 순위·점수 없이 나열, 검색/정당 필터만.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { fetchPersons, type PersonListItem } from "@/lib/api";
 import { Avatar, PartyDot } from "./PersonBits";
+
+const PAGE = 30; // 무한스크롤 한 번에 더 그리는 카드 수
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<PersonListItem[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [party, setParty] = useState<string | null>(null);
+  const [visible, setVisible] = useState(PAGE);
 
   useEffect(() => {
     fetchPersons()
@@ -35,6 +38,32 @@ export default function PersonsPage() {
         (!q || p.name.includes(q) || (p.district ?? "").includes(q)),
     );
   }, [persons, party, q]);
+
+  // 검색·필터가 바뀌면 처음부터 다시 그린다.
+  useEffect(() => {
+    setVisible(PAGE);
+  }, [q, party]);
+
+  const shown = filtered.slice(0, visible);
+  const hasMore = visible < filtered.length;
+
+  // 바닥 센티넬이 보이면 다음 묶음을 추가로 렌더링.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => v + PAGE);
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, shown.length]);
 
   return (
     <main>
@@ -78,7 +107,7 @@ export default function PersonsPage() {
         <p className="muted">조건에 맞는 의원이 없어요.</p>
       )}
 
-      {filtered.map((p) => (
+      {shown.map((p) => (
         <Link
           key={p.id}
           href={`/person/${p.id}`}
@@ -98,6 +127,12 @@ export default function PersonsPage() {
           </div>
         </Link>
       ))}
+
+      {hasMore && (
+        <div ref={sentinel} className="muted" style={{ textAlign: "center", padding: 16, fontSize: 13 }}>
+          더 불러오는 중…
+        </div>
+      )}
     </main>
   );
 }

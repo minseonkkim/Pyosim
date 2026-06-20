@@ -3,7 +3,7 @@
 // 법안 피드 (큐레이션 홈) — 흩어진 법안 대신 '논쟁이 있던' 정책 법안만 골라 보여준다.
 // 🟡 추천이 아니라 사실 기반 선별(정쟁 제외·반대표/정당갈림 순). 탭하면 상세 그물망으로.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -13,12 +13,18 @@ import {
   type CategoryCount,
 } from "@/lib/api";
 
+// 큐레이션 피드는 재랭킹(정당 갈림→반대표 순) 때문에 offset 페이지네이션이 불안정하다.
+// 그래서 한정적인 전체 피드를 한 번에 받아 스크롤에 따라 점진 렌더링한다(국회의원 목록과 동일).
+const FEED_LIMIT = 1000; // 사실상 전체(정쟁 제외·표결 있는 정책 법안만이라 규모 한정적)
+const PAGE = 20; // 무한스크롤 한 번에 더 그리는 카드 수
+
 export default function BillsFeedPage() {
   const [feed, setFeed] = useState<BillCard[] | null>(null);
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [cats, setCats] = useState<CategoryCount[]>([]);
   const [active, setActive] = useState<string | null>(null); // 선택 카테고리(없으면 전체)
+  const [visible, setVisible] = useState(PAGE);
 
   // 카테고리 칩은 한 번만 불러온다(피드 필터와 무관하게 고정).
   useEffect(() => {
@@ -27,17 +33,39 @@ export default function BillsFeedPage() {
       .catch(() => setCats([]));
   }, []);
 
-  // 선택 카테고리가 바뀌면 피드를 다시 불러온다.
+  // 선택 카테고리가 바뀌면 피드를 다시 불러오고, 처음부터 다시 그린다.
   useEffect(() => {
     setFeed(null);
     setErr(null);
-    fetchBills(20, active ?? undefined)
+    setVisible(PAGE);
+    fetchBills(FEED_LIMIT, active ?? undefined)
       .then((f) => {
         setFeed(f.items);
         setNotice(f.notice);
       })
       .catch((e) => setErr((e as Error).message));
   }, [active]);
+
+  const shown = feed?.slice(0, visible) ?? [];
+  const hasMore = feed !== null && visible < feed.length;
+
+  // 바닥 센티넬이 보이면 다음 묶음을 추가로 렌더링.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible((v) => v + PAGE);
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, shown.length]);
 
   return (
     <main>
@@ -68,9 +96,15 @@ export default function BillsFeedPage() {
         <p className="muted">이 분야엔 아직 보여줄 법안이 없어요.</p>
       )}
 
-      {feed?.map((b) => (
+      {shown.map((b) => (
         <BillCardItem key={b.id} b={b} />
       ))}
+
+      {hasMore && (
+        <div ref={sentinel} className="muted" style={{ textAlign: "center", padding: 16, fontSize: 13 }}>
+          더 불러오는 중…
+        </div>
+      )}
 
       {notice && (
         <div className="disclaimer" style={{ marginTop: 20 }}>
