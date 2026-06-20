@@ -25,11 +25,36 @@ import urllib.parse
 import urllib.request
 import zipfile
 import zlib
+from datetime import date
 
 import olefile
 
 LIKMS = "https://likms.assembly.go.kr"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Pyosim-ETL"
+
+# 의안 상세(billDetail) HTML 의 '제안일자' — OpenAPI 표결현황엔 처리일(PROC_DT)만 있고
+# 위원장 '대안' 가결안의 발의일이 빠져, 상세 페이지에서 직접 추출(발의법률안 목록엔 대안 미포함).
+_PROPOSE_DT = re.compile(r"제안일자[^0-9]{0,40}(\d{4}-\d{2}-\d{2})")
+
+
+def fetch_propose_date(bill_id: str) -> date | None:
+    """billId(PRC_…/ARC_…) 의 의안 상세에서 '제안일자' 추출. 없으면 None.
+
+    네트워크/파싱 예외는 호출 측에서 처리(여기선 그대로 전파).
+    """
+    req = urllib.request.Request(
+        f"{LIKMS}/bill/billDetail.do?billId={bill_id}", headers={"User-Agent": UA}
+    )
+    html = urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "replace")
+    # 태그 제거 후 공백 압축 — 라벨·값이 표 셀로 떨어져 있어 줄바꿈/공백이 길게 낀다.
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+    m = _PROPOSE_DT.search(text)
+    if not m:
+        return None
+    try:
+        return date.fromisoformat(m.group(1))
+    except ValueError:
+        return None
 
 
 def download_uian_hwp(bill_id: str) -> bytes | None:

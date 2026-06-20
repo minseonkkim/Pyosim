@@ -5,6 +5,7 @@
   python -m jobs.run --job members
   python -m jobs.run --job bills
   python -m jobs.run --job vote_records --limit 20
+  python -m jobs.run --job propose_dates --limit 50   # likms 상세 '제안일자' → 발의일(대안 보강)
   python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
   python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
   python -m jobs.run --job bills --dry-run            # 미기록(미리보기, DB 연결은 필요)
@@ -101,6 +102,21 @@ def _proposers(args) -> None:
     finally:
         session.close()
     print(f"proposers 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("propose_dates")
+def _propose_dates(args) -> None:
+    # likms 의안 상세 '제안일자' → Bill.proposed_date (표결된 대안 등 발의일 누락분 보강)
+    from jobs import bill_propose_date
+
+    session = _build_session()
+    try:
+        stats = bill_propose_date.run_propose_dates(
+            session, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"propose_dates 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("bill_content")
