@@ -57,7 +57,9 @@ export default function Home() {
           margin: "16px 0 0",
         }}
       >
-        국회, 내 편 맞아?
+        내 한 표,
+        <br />
+        알고 던졌나?
       </h1>
 
       <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--ink-700)" }}>
