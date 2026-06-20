@@ -141,14 +141,18 @@ export default function ResultPage() {
               {q.disagree_parties.length ? q.disagree_parties.join(", ") : "—"}
             </div>
           )}
-          {q.source_note && (
-            <details
-              className="source"
-              onToggle={(e) => {
-                if ((e.target as HTMLDetailsElement).open)
-                  track("source_open", { question_id: q.question_id });
-              }}
+          {q.bill_id && (
+            <Link
+              href={`/bill/${q.bill_id}`}
+              className="chip"
+              style={{ display: "inline-block", marginTop: 10, textDecoration: "none" }}
+              onClick={() => track("source_open", { question_id: q.question_id })}
             >
+              이 법안 자세히 보기 →
+            </Link>
+          )}
+          {q.source_note && (
+            <details className="source">
               <summary>출처 ▼</summary>
               <p style={{ marginBottom: 4 }}>{q.source_note}</p>
               {q.likms_url && (

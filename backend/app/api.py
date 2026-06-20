@@ -96,6 +96,7 @@ class QuestionResultOut(BaseModel):
     agree_parties: list[str]  # 내 답과 같은 방향으로 표결한 정당
     disagree_parties: list[str]
     source_note: str | None
+    bill_id: int | None  # 내부 법안 허브(/bill/{id}) 연결 — 그물망
     likms_url: str | None
 
 
@@ -228,6 +229,7 @@ def compute_results(
                 agree_parties=agree,
                 disagree_parties=disagree,
                 source_note=q.source_note,
+                bill_id=bill.id if bill else None,
                 likms_url=bill.likms_url if bill else None,
             )
         )

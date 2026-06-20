@@ -46,6 +46,7 @@ export interface QuestionResult {
   agree_parties: string[];
   disagree_parties: string[];
   source_note: string | null;
+  bill_id: number | null;
   likms_url: string | null;
 }
 
