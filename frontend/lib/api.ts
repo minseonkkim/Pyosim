@@ -195,6 +195,19 @@ export function fetchBill(id: number): Promise<BillDetail> {
   return getJSON<BillDetail>(`/api/bills/${id}`);
 }
 
+// AI 참고 요약 — 상세와 분리(생성에 수십 초). 상세 표시 후 따로 호출해 "생성 중…" → 채움.
+export interface BillSummary {
+  summary_pros: string[];
+  summary_cons: string[];
+  summary_notice: string | null;
+  ready: boolean; // 좋은점·문제점 양쪽 준비됨
+  available: boolean; // 원문이 있어 생성 가능(없으면 영구 빈값)
+}
+
+export function fetchBillSummary(id: number): Promise<BillSummary> {
+  return getJSON<BillSummary>(`/api/bills/${id}/summary`);
+}
+
 export interface BillCard {
   id: number;
   title: string;

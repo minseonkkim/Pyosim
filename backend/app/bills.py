@@ -252,9 +252,9 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
     if bill is None:
         raise HTTPException(status_code=404, detail="해당 법안을 찾을 수 없습니다.")
 
-    # 본문 미수집이면 그 자리에서 받아 캐싱(on-demand) → 본문 위에 AI 요약도 보강
+    # 본문 미수집이면 그 자리에서 받아 캐싱(on-demand). 본문은 페이지 본체라 동기로 둠(수 초).
+    # ⚠️ AI 요약(로컬 LLM, 수십 초)은 응답을 막지 않도록 분리 — 프론트가 /summary 로 따로 호출.
     _ensure_content(db, bill)
-    _ensure_summary(db, bill)
 
     # 대표발의자
     proposer = None
@@ -333,4 +333,42 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         proposer=proposer, vote=vote_out,
         party_breakdown=party_breakdown, voters=voters, funnel=funnel,
         notice=NOTICE,
+    )
+
+
+class BillSummary(BaseModel):
+    """AI 참고 요약(좋은점/문제점) — 상세와 분리해 별도 호출(생성에 수십 초 소요).
+
+    pending: 본문은 있으나 아직 요약 생성 중/실패(다음 호출 때 재시도). 양쪽이 채워지면 ready.
+    """
+    summary_pros: list[str]
+    summary_cons: list[str]
+    summary_notice: str | None
+    ready: bool  # 좋은점·문제점 양쪽이 준비됨
+    available: bool  # 원문이 있어 요약 생성이 가능함(없으면 영구 빈값)
+
+
+@router.get("/{bid}/summary", response_model=BillSummary)
+def get_bill_summary(bid: int, db: Session = Depends(get_db)) -> BillSummary:
+    """법안 AI 요약 — 미생성이면 그 자리에서 생성(on-demand, 로컬 LLM).
+
+    상세 응답을 막지 않도록 분리한 엔드포인트. 프론트는 상세 표시 후 이걸 따로 호출해
+    "생성 중…" 표시 → 완료되면 채운다. 본문 없는 법안은 available=False(영구 빈값).
+    """
+    bill = db.get(Bill, bid)
+    if bill is None:
+        raise HTTPException(status_code=404, detail="해당 법안을 찾을 수 없습니다.")
+
+    _ensure_content(db, bill)  # 요약엔 원문이 필요 — 미수집이면 먼저 확보
+    _ensure_summary(db, bill)
+
+    pros = bill.summary_pros.split("\n") if bill.summary_pros else []
+    cons = bill.summary_cons.split("\n") if bill.summary_cons else []
+    ready = bool(pros and cons)
+    return BillSummary(
+        summary_pros=pros, summary_cons=cons,
+        summary_notice=SUMMARY_NOTICE.format(model=bill.summary_model or "생성 모델")
+        if ready else None,
+        ready=ready,
+        available=bool(bill.proposal_reason or bill.main_content),
     )

@@ -7,7 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-import { fetchBill, type BillDetail, type Voter } from "@/lib/api";
+import {
+  fetchBill,
+  fetchBillSummary,
+  type BillDetail,
+  type BillSummary,
+  type Voter,
+} from "@/lib/api";
 import { PartyDot } from "../../persons/PersonBits";
 
 const CHOICES: Voter["choice"][] = ["찬성", "반대", "기권", "불참"];
@@ -17,6 +23,8 @@ export default function BillPage() {
   const id = Number(params.id);
   const [b, setB] = useState<BillDetail | null | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
+  // AI 요약은 상세와 분리 호출(생성 수십 초) — undefined=로딩, null=불가/실패
+  const [summary, setSummary] = useState<BillSummary | null | undefined>(undefined);
 
   useEffect(() => {
     if (!Number.isFinite(id)) return;
@@ -27,6 +35,29 @@ export default function BillPage() {
         setB(null);
       });
   }, [id]);
+
+  // 상세가 뜬 뒤 요약을 별도로 호출(응답을 막지 않음). 상세에 이미 캐시돼 오면 그걸 사용.
+  useEffect(() => {
+    if (!b) return;
+    if (b.summary_pros.length > 0 && b.summary_cons.length > 0) {
+      setSummary({
+        summary_pros: b.summary_pros,
+        summary_cons: b.summary_cons,
+        summary_notice: b.summary_notice,
+        ready: true,
+        available: true,
+      });
+      return;
+    }
+    let alive = true;
+    setSummary(undefined);
+    fetchBillSummary(b.id)
+      .then((s) => alive && setSummary(s))
+      .catch(() => alive && setSummary(null));
+    return () => {
+      alive = false;
+    };
+  }, [b]);
 
   const votersByChoice = useMemo(() => {
     const m: Record<string, Voter[]> = { 찬성: [], 반대: [], 기권: [], 불참: [] };
@@ -80,23 +111,33 @@ export default function BillPage() {
         </section>
       )}
 
-      {/* AI 참고 요약 — 좋은점/문제점(양쪽 대칭). 🟡 공식 원문과 분리, AI 생성 명시 */}
-      {b.summary_pros.length > 0 && b.summary_cons.length > 0 && (
+      {/* AI 참고 요약 — 좋은점/문제점(양쪽 대칭). 🟡 공식 원문과 분리, AI 생성 명시.
+          상세와 분리 호출: 생성에 수십 초 걸려 "생성 중…" 표시 후 채운다. */}
+      {summary === undefined ? (
+        <section style={{ marginTop: 20 }}>
+          <h3 style={{ marginBottom: 4 }}>
+            AI 참고 요약 <span className="chip" style={{ fontSize: 11 }}>AI 생성</span>
+          </h3>
+          <p className="muted" style={{ fontSize: 13.5, marginTop: 8 }}>
+            좋은점·문제점을 생성하는 중이에요… (수십 초 걸릴 수 있어요)
+          </p>
+        </section>
+      ) : summary && summary.ready ? (
         <section style={{ marginTop: 20 }}>
           <h3 style={{ marginBottom: 4 }}>
             AI 참고 요약 <span className="chip" style={{ fontSize: 11 }}>AI 생성</span>
           </h3>
           <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
-            <ProsCons label="좋은점" items={b.summary_pros} tone="pro" />
-            <ProsCons label="문제점·우려" items={b.summary_cons} tone="con" />
+            <ProsCons label="좋은점" items={summary.summary_pros} tone="pro" />
+            <ProsCons label="문제점·우려" items={summary.summary_cons} tone="con" />
           </div>
-          {b.summary_notice && (
+          {summary.summary_notice && (
             <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
-              ⚠️ {b.summary_notice}
+              ⚠️ {summary.summary_notice}
             </p>
           )}
         </section>
-      )}
+      ) : null}
 
       {/* 대표발의자 → 프로필(그물망) */}
       {b.proposer && (
