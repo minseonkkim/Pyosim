@@ -106,9 +106,12 @@ export default function TestPage() {
     setAnswers(next);
     saveAnswers(next);
     track("answer", { idx, question_id: q.id, choice });
-    // 마지막 문항이 아니면 살짝 뒤 자동 진행
+    // 마지막 문항이 아니면 살짝 뒤 자동 진행.
+    // 빠른 연타 시 타이머가 여러 개 쌓여 idx가 2칸 이상 점프(문항 건너뜀)하지 않도록,
+    // 클릭 시점의 다음 문항으로만 이동하고 이미 넘어갔으면 무시한다.
     if (idx < total - 1) {
-      setTimeout(() => setIdx((i) => Math.min(i + 1, total - 1)), 220);
+      const target = idx + 1;
+      setTimeout(() => setIdx((i) => (i === idx ? target : i)), 220);
     }
   }
 
