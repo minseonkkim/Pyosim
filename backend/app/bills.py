@@ -92,6 +92,7 @@ class Voter(BaseModel):
 class FunnelStep(BaseModel):
     label: str
     done: bool
+    date: date | None  # 단계 의결일(있으면) — 🟡 공식 일자 그대로
 
 
 class BillDetail(BaseModel):
@@ -350,11 +351,18 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
             ))
         ]
 
+    # 처리 단계 날짜 타임라인 — 단계 의결일(nwbpacrgavhjryiph). 본회의 의결일은
+    # 단계 데이터(plenary_proc_date) 우선, 없으면 표결 집계일(vote.session_date)로 보강.
+    plenary_date = bill.plenary_proc_date or (vote.session_date if vote else None)
     funnel = [
-        FunnelStep(label="발의", done=bill.proposed_date is not None),
-        FunnelStep(label="위원회", done=bill.committee is not None),
-        FunnelStep(label="본회의", done=vote is not None),
-        FunnelStep(label="처리", done=bool(bill.status)),
+        FunnelStep(label="발의", date=bill.proposed_date, done=bill.proposed_date is not None),
+        FunnelStep(label="소관위 의결", date=bill.committee_proc_date,
+                   done=bill.committee_proc_date is not None),
+        FunnelStep(label="법사위 의결", date=bill.law_proc_date,
+                   done=bill.law_proc_date is not None),
+        FunnelStep(label="본회의 의결", date=plenary_date,
+                   done=plenary_date is not None or vote is not None),
+        FunnelStep(label="공포", date=bill.announce_date, done=bill.announce_date is not None),
     ]
 
     pros = bill.summary_pros.split("\n") if bill.summary_pros else []

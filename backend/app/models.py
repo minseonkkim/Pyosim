@@ -125,6 +125,12 @@ class Bill(Base):
     proposer_kind: Mapped[str | None] = mapped_column(String(20))  # 의원/정부/위원장
     proposer_text: Mapped[str | None] = mapped_column(String(200))  # 예: "정부", "정무위원장"
     proposed_date: Mapped[date | None] = mapped_column(Date)
+    # 처리 단계별 의결일 (본회의 처리안건 nwbpacrgavhjryiph) — 날짜 타임라인(Phase 1-3)
+    # 🟡 공식 일자 그대로. 미도달 단계는 null(= '여기서 멈췄다'를 사실로 드러냄).
+    committee_proc_date: Mapped[date | None] = mapped_column(Date)  # 소관위 의결
+    law_proc_date: Mapped[date | None] = mapped_column(Date)  # 법사위(체계·자구) 의결
+    plenary_proc_date: Mapped[date | None] = mapped_column(Date)  # 본회의 의결
+    announce_date: Mapped[date | None] = mapped_column(Date)  # 공포
     committee: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str | None] = mapped_column(String(60))
     # 생활 카테고리(세금·노동·주거 등) — "내 삶과 상관" 강화용 (Phase 1-3b)

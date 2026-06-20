@@ -182,6 +182,7 @@ export interface Voter {
 export interface FunnelStep {
   label: string;
   done: boolean;
+  date: string | null;
 }
 
 export interface BillDetail {

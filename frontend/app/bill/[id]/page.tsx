@@ -171,27 +171,14 @@ export default function BillPage() {
         </div>
       )}
 
-      {/* 처리 funnel */}
+      {/* 처리 단계 — 날짜 타임라인. 🟡 공식 의결일 그대로. 미도달 단계는 '—'로 멈춘 지점을 드러냄 */}
       <h3 style={{ marginTop: 24, marginBottom: 8 }}>처리 단계</h3>
-      <div style={{ display: "flex", gap: 6 }}>
-        {b.funnel.map((s, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div
-              style={{
-                height: 6,
-                borderRadius: 999,
-                background: s.done ? "var(--ink-900)" : "var(--ink-200)",
-              }}
-            />
-            <div
-              className={s.done ? undefined : "muted"}
-              style={{ fontSize: 12, marginTop: 6, fontWeight: s.done ? 600 : 400 }}
-            >
-              {s.label}
-            </div>
-          </div>
-        ))}
-      </div>
+      <Timeline steps={b.funnel} />
+      {b.funnel.some((s) => s.done) && (
+        <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+          국회 본회의 처리안건 기준 단계별 의결일입니다. ‘—’ 단계는 아직 거치지 않았어요.
+        </p>
+      )}
 
       {/* 본회의 표결 */}
       <h3 style={{ marginTop: 24, marginBottom: 8 }}>본회의 표결</h3>
@@ -285,6 +272,46 @@ export default function BillPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function fmtDate(d: string | null): string {
+  if (!d) return "—";
+  return d.slice(0, 10).replace(/-/g, ".");
+}
+
+// 처리 단계 세로 타임라인 — 점·세로축·라벨/날짜. 거친 단계는 진하게, 미도달은 옅게.
+function Timeline({ steps }: { steps: { label: string; done: boolean; date: string | null }[] }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 2, background: "var(--ink-200)" }}
+      />
+      {steps.map((s, i) => (
+        <div key={i} style={{ display: "flex", gap: 12, alignItems: "baseline", marginBottom: 12 }}>
+          <span
+            style={{
+              position: "relative",
+              zIndex: 1,
+              flexShrink: 0,
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              background: s.done ? "var(--ink-900)" : "var(--bg)",
+              border: `2px solid ${s.done ? "var(--ink-900)" : "var(--ink-300)"}`,
+              alignSelf: "center",
+            }}
+          />
+          <span
+            className={s.done ? undefined : "muted"}
+            style={{ fontSize: 14, fontWeight: s.done ? 600 : 400, minWidth: 92 }}
+          >
+            {s.label}
+          </span>
+          <span className="muted numeral" style={{ fontSize: 13 }}>{fmtDate(s.date)}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 

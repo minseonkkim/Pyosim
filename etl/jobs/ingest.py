@@ -7,6 +7,7 @@
   proposers     발의법률안 + 대표발의자 연결   nzmimeepazxkubdpn  → Bill(+proposer_id)
   proposer_kinds 제안자 구분(정부·위원장)        TVBPMBILL11        → Bill(+proposer_kind/text)
   committees    위원회 + 의원 위원회경력(제22대) nxrvzonlafugpqjuh+nyzrglyvagmrypezq → Committee, CommitteeMembership
+  bill_stages   본회의 처리 단계별 의결일        nwbpacrgavhjryiph  → Bill(단계 일자)
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
@@ -40,6 +41,7 @@ SVC_BILL_SEARCH = "TVBPMBILL11"  # 의안검색 — 제안자 구분(PROPOSER_KI
 SVC_ALLMEMBER = "ALLNAMEMBER"  # 역대 의원 통합 — 사진(NAAS_PIC). NAAS_CD == MONA_CD
 SVC_CMT_STATUS = "nxrvzonlafugpqjuh"  # 위원회 현황(엔티티: 상임/특위, 정원)
 SVC_CMT_CAREER = "nyzrglyvagmrypezq"  # 국회의원 위원회 경력(MONA_CD↔위원회명, 활동기간)
+SVC_PLENARY_BILLS = "nwbpacrgavhjryiph"  # 본회의 처리안건(법률안) — 단계별 의결일
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
@@ -489,3 +491,43 @@ def run_committees(
         "linked": n_link, "updated_link": n_upd_link,
         "skipped_nonstanding": n_nomatch, "skipped_no_person": n_noperson,
     }
+
+
+# ───────────────────────── bill_stages (처리 단계 의결일) ─────────────────────────
+def run_bill_stages(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """본회의 처리안건(`nwbpacrgavhjryiph`) → Bill 단계별 의결일 (Phase 1-3).
+
+    funnel 을 실제 날짜 타임라인으로 승격: 소관위/법사위/본회의 의결일 + 공포일.
+    의안번호(BILL_NO)로 기존 Bill 매칭(신규 생성 X). 발의일이 비어 있으면 PROPOSE_DT 로 보강.
+    🟡 공식 일자 그대로 저장(판정 없음). 멱등 upsert.
+    """
+    bills = {b.bill_no: b for b in session.scalars(select(Bill)).all()}
+    if not bills:
+        return {"error": "법안 데이터 없음 — bills/proposers 잡 먼저 실행"}
+
+    n_match = n_set = 0
+    for row in client.iter_rows(SVC_PLENARY_BILLS, params={"AGE": age}, max_rows=limit):
+        bill = bills.get((row.get("BILL_NO") or "").strip())
+        if bill is None:
+            continue
+        n_match += 1
+        cmte = _parse_date(row.get("COMMITTEE_PROC_DT"))
+        law = _parse_date(row.get("LAW_PROC_DT"))
+        plen = _parse_date(row.get("RGS_PROC_DT"))
+        anno = _parse_date(row.get("ANNOUNCE_DT"))
+        if not any((cmte, law, plen, anno)):
+            continue
+        bill.committee_proc_date = cmte
+        bill.law_proc_date = law
+        bill.plenary_proc_date = plen
+        bill.announce_date = anno
+        bill.proposed_date = bill.proposed_date or _parse_date(row.get("PROPOSE_DT"))
+        bill.last_verified = _now()
+        n_set += 1
+
+    if not dry_run:
+        session.commit()
+    return {"matched": n_match, "set": n_set, "of_bills": len(bills)}

@@ -153,7 +153,8 @@ def main() -> int:
     print(f"    대표발의={bill['proposer']['name'] if bill['proposer'] else None} "
           f"funnel={[s['label'] for s in bill['funnel'] if s['done']]}")
     assert bill["proposer"] and bill["proposer"]["name"] == "[데모] 이두리", bill["proposer"]
-    assert len(bill["funnel"]) == 4 and bill["funnel"][0]["done"]  # 발의 done
+    assert len(bill["funnel"]) == 5 and bill["funnel"][0]["done"]  # 발의→…→공포 5단계, 발의 done
+    assert "date" in bill["funnel"][0]  # 단계별 의결일(날짜 타임라인)
     assert bill["notice"], "🟡 중립 고지 동봉 필요"
     assert bill["vote"] is None  # 데모: 본회의 표결 없음
     # 본문 필드 노출(데모는 미수집이라 None 허용) — 실데이터는 ETL bill_content 로 채움
