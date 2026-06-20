@@ -148,19 +148,8 @@ export default function ResultPage() {
               style={{ display: "inline-block", marginTop: 10, textDecoration: "none" }}
               onClick={() => track("source_open", { question_id: q.question_id })}
             >
-              이 법안 자세히 보기 →
+              이 법안 자세히 보기 (본문·표결·출처) →
             </Link>
-          )}
-          {q.source_note && (
-            <details className="source">
-              <summary>출처 ▼</summary>
-              <p style={{ marginBottom: 4 }}>{q.source_note}</p>
-              {q.likms_url && (
-                <a href={q.likms_url} target="_blank" rel="noreferrer">
-                  의안정보시스템에서 보기 ↗
-                </a>
-              )}
-            </details>
           )}
         </div>
       ))}
