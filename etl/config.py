@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     assembly_api_key: str = ""
     nec_api_key: str = ""
     data_go_kr_api_key: str = ""
+    ofd_api_key: str = ""  # 열린재정 openapi.openfiscaldata.go.kr
     # AI 요약(좋은점/문제점) provider — "ollama"(로컬·무료·무제한) | "gemini"
     summary_provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"

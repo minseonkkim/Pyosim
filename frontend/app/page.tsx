@@ -49,6 +49,14 @@ export default function Home() {
         국회의원 둘러보기 →
       </Link>
 
+      <Link
+        href="/tax"
+        className="btn btn-ghost btn-block"
+        style={{ marginTop: 10 }}
+      >
+        내 세금 어디 쓰이나 보기 →
+      </Link>
+
       <ul
         style={{
           marginTop: 28,

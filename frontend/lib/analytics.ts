@@ -13,7 +13,10 @@ export type EventName =
   | "test_complete"
   | "result_view"
   | "share_click"
-  | "source_open";
+  | "source_open"
+  | "tax_view"
+  | "tax_calc"
+  | "tax_to_test";
 
 type Props = Record<string, string | number | boolean>;
 interface Queued {

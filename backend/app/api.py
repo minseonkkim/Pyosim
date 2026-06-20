@@ -276,6 +276,9 @@ ALLOWED_EVENTS: frozenset[str] = frozenset(
         "result_view",    # 결과 화면 노출
         "share_click",    # 공유 시도 (props: method)
         "source_open",    # ▼출처 펼침(데이터 신뢰 engagement)
+        "tax_view",       # 세금 계산기 진입(진입 장치 1단계)
+        "tax_calc",       # 세금 계산 실행 (props: monthly_man)
+        "tax_to_test",    # 세금 계산기 → 성향 테스트 전환(그물망 입구)
     }
 )
 _MAX_EVENTS_PER_BATCH = 50

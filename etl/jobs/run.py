@@ -42,6 +42,13 @@ def _build_client():
     return AssemblyClient(settings.assembly_api_key)
 
 
+def _build_ofd_client():
+    from config import settings
+    from clients.openfiscal import OpenFiscalClient
+
+    return OpenFiscalClient(settings.ofd_api_key)
+
+
 def _build_session():
     from jobs.db import make_session_factory
 
@@ -149,11 +156,23 @@ def _bill_summary(args) -> None:
     print(f"bill_summary 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("budget")
+def _budget(args) -> None:
+    # 열린재정 OPFI165 → frontend/lib/budget-data.json (세금 계산기 분야 막대)
+    from jobs import budget
+
+    stats = budget.run_budget(
+        _build_ofd_client(), year=args.year, dry_run=args.dry_run
+    )
+    print(f"budget 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="표심 ETL 잡 러너")
     parser.add_argument("--job", required=True, help=f"실행할 잡. 등록됨: {', '.join(JOBS)}")
     parser.add_argument("--age", default="22", help="국회 대수 (기본 22)")
     parser.add_argument("--limit", type=int, default=None, help="처리 건수 상한")
+    parser.add_argument("--year", type=int, default=None, help="회계연도 (budget 잡; 미지정 시 최근 결산연도)")
     parser.add_argument("--dry-run", action="store_true", help="DB 미기록(미리보기)")
     args = parser.parse_args(argv)
 

@@ -1,0 +1,90 @@
+{
+  "source": "열린재정 OPFI165 — 16대 분야별 재원배분(총지출 기준)",
+  "source_url": "https://openapi.openfiscaldata.go.kr/OPFI165",
+  "year": 2025,
+  "basis": "결산",
+  "total_trillion": 684.1,
+  "fetched_at": "2026-06-20",
+  "fields": [
+    {
+      "code": "080",
+      "name": "사회복지",
+      "trillion": 218.9
+    },
+    {
+      "code": "010",
+      "name": "일반·지방행정",
+      "trillion": 127.8
+    },
+    {
+      "code": "050",
+      "name": "교육",
+      "trillion": 96.8
+    },
+    {
+      "code": "040",
+      "name": "국방",
+      "trillion": 57.0
+    },
+    {
+      "code": "110",
+      "name": "산업·중소기업및에너지",
+      "trillion": 35.0
+    },
+    {
+      "code": "100",
+      "name": "농림수산",
+      "trillion": 27.2
+    },
+    {
+      "code": "020",
+      "name": "공공질서및안전",
+      "trillion": 26.0
+    },
+    {
+      "code": "120",
+      "name": "교통및물류",
+      "trillion": 20.7
+    },
+    {
+      "code": "090",
+      "name": "보건",
+      "trillion": 19.5
+    },
+    {
+      "code": "070",
+      "name": "환경",
+      "trillion": 12.1
+    },
+    {
+      "code": "130",
+      "name": "통신",
+      "trillion": 11.7
+    },
+    {
+      "code": "150",
+      "name": "과학기술",
+      "trillion": 10.8
+    },
+    {
+      "code": "060",
+      "name": "문화및관광",
+      "trillion": 8.8
+    },
+    {
+      "code": "030",
+      "name": "통일·외교",
+      "trillion": 6.5
+    },
+    {
+      "code": "140",
+      "name": "국토및지역개발",
+      "trillion": 4.6
+    },
+    {
+      "code": "160",
+      "name": "예비비",
+      "trillion": 0.7
+    }
+  ]
+}
