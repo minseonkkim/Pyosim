@@ -8,6 +8,7 @@
   proposer_kinds 제안자 구분(정부·위원장)        TVBPMBILL11        → Bill(+proposer_kind/text)
   committees    위원회 + 의원 위원회경력(제22대) nxrvzonlafugpqjuh+nyzrglyvagmrypezq → Committee, CommitteeMembership
   bill_stages   본회의 처리 단계별 의결일        nwbpacrgavhjryiph  → Bill(단계 일자)
+  petitions     청원 계류·처리현황(기능 A)        nvqbafvaajdiqhehi+ncryefyuaflxnqbqo → Petition
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
@@ -27,6 +28,7 @@ from jobs.db import (
     CommitteeMembership,
     Party,
     Person,
+    Petition,
     Vote,
     VoteChoice,
     VoteRecord,
@@ -42,10 +44,16 @@ SVC_ALLMEMBER = "ALLNAMEMBER"  # 역대 의원 통합 — 사진(NAAS_PIC). NAAS
 SVC_CMT_STATUS = "nxrvzonlafugpqjuh"  # 위원회 현황(엔티티: 상임/특위, 정원)
 SVC_CMT_CAREER = "nyzrglyvagmrypezq"  # 국회의원 위원회 경력(MONA_CD↔위원회명, 활동기간)
 SVC_PLENARY_BILLS = "nwbpacrgavhjryiph"  # 본회의 처리안건(법률안) — 단계별 의결일
+SVC_PETITION_PENDING = "nvqbafvaajdiqhehi"  # 청원 계류현황(처리결과 없음)
+SVC_PETITION_DONE = "ncryefyuaflxnqbqo"  # 청원 처리현황(PROC_RESULT_CD 포함)
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
 CMT_SOURCE = "https://open.assembly.go.kr/portal/assm/assmPrpl/committeeMemberList.do"
+
+# 국민동의청원 소개 표기(APPROVER) — 5만 동의로 자동 회부된 청원
+NATIONAL_CONSENT = "국민동의청원"
+_SIGN_COUNT = re.compile(r"외\s*([\d,]+)\s*인")  # PROPOSER "○○외 50,922인" → 50922
 
 
 def _now() -> datetime:
@@ -531,3 +539,69 @@ def run_bill_stages(
     if not dry_run:
         session.commit()
     return {"matched": n_match, "set": n_set, "of_bills": len(bills)}
+
+
+# ───────────────────────── petitions (청원 추적) ─────────────────────────
+def _parse_sign_count(proposer: str | None) -> int | None:
+    """PROPOSER "○○외 50,922인" → 50922. 매칭 안 되면 None."""
+    if not proposer:
+        return None
+    m = _SIGN_COUNT.search(proposer)
+    return int(m.group(1).replace(",", "")) if m else None
+
+
+def run_petitions(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """청원 계류현황 + 처리현황 → Petition (Phase 2 기능 A).
+
+    민심 레이어 첫 축: 시민 청원이 '지금 어느 단계에 멈췄나'를 추적.
+    1) 계류현황(`nvqbafvaajdiqhehi`) → proc_result 없는(=아직 처리 안 된) 청원.
+    2) 처리현황(`ncryefyuaflxnqbqo`) → PROC_RESULT_CD(최종 처리결과) 채워 upsert.
+       처리되면 계류현황에서 빠지므로, 처리현황을 나중에 적용해 결과를 덮어쓴다.
+    의안번호(BILL_NO)로 멱등 upsert. 🟡 공개 기록 값만 보존, 처리결과 코드 원문 그대로.
+    """
+    existing = {p.bill_no: p for p in session.scalars(select(Petition)).all()}
+    n_new = n_upd = 0
+
+    def _upsert(row: dict, *, proc_result: str | None) -> None:
+        nonlocal n_new, n_upd
+        bill_no = (row.get("BILL_NO") or "").strip()
+        if not bill_no:
+            return
+        p = existing.get(bill_no)
+        if p is None:
+            p = Petition(bill_no=bill_no)
+            existing[bill_no] = p
+            n_new += 1
+            if not dry_run:
+                session.add(p)
+        else:
+            n_upd += 1
+        p.assembly_bill_id = (row.get("BILL_ID") or "").strip() or None
+        p.title = (row.get("BILL_NAME") or "").strip()
+        proposer = (row.get("PROPOSER") or "").strip() or None
+        p.proposer = proposer
+        introducer = (row.get("APPROVER") or "").strip() or None
+        p.introducer = introducer
+        p.is_national_consent = introducer == NATIONAL_CONSENT
+        p.signature_count = _parse_sign_count(proposer)
+        p.proposed_date = _parse_date(row.get("PROPOSE_DT"))
+        p.committee = (row.get("CURR_COMMITTEE") or "").strip() or None
+        p.committee_date = _parse_date(row.get("COMMITTEE_DT"))
+        p.proc_result = proc_result
+        p.source_url = (row.get("LINK_URL") or "").strip() or None
+        p.last_verified = _now()
+
+    # 1) 계류현황(처리결과 없음)
+    for row in client.iter_rows(SVC_PETITION_PENDING, params={"AGE": age}, max_rows=limit):
+        _upsert(row, proc_result=None)
+    # 2) 처리현황(최종 처리결과 덮어쓰기)
+    for row in client.iter_rows(SVC_PETITION_DONE, params={"AGE": age}, max_rows=limit):
+        _upsert(row, proc_result=(row.get("PROC_RESULT_CD") or "").strip() or None)
+
+    if not dry_run:
+        session.commit()
+    pending = sum(1 for p in existing.values() if p.proc_result is None)
+    return {"new": n_new, "updated": n_upd, "total": len(existing), "pending": pending}

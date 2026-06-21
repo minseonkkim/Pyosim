@@ -262,6 +262,41 @@ class CommitteeMembership(Base):
     person: Mapped[Person] = relationship(back_populates="committee_memberships")
 
 
+# ───────────────────────── 청원 (Phase 2 기능 A) ─────────────────────────
+class Petition(Base):
+    """국민동의청원·일반청원 추적 — "그 청원 지금 어디?" (Phase 2 기능 A).
+
+    민심 레이어의 첫 축: 시민이 올린 청원이 접수→소관위 회부→심사→처리 중
+    '지금 어느 단계에 멈춰 있는지'를 공식 일자로 드러낸다.
+
+    출처: 열린국회정보 청원 계류현황(`nvqbafvaajdiqhehi`) + 처리현황(`ncryefyuaflxnqbqo`).
+    🟡 발안자 개인정보 최소화: 공식 공개 기록(likms)에 있는 값만 그대로 보존하고,
+       화면은 동의 인원수(국민동의청원)를 헤드라인으로 쓴다. 처리결과는 공식 코드 원문 그대로.
+    """
+    __tablename__ = "petition"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bill_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False, index=True)  # 의안번호
+    assembly_bill_id: Mapped[str | None] = mapped_column(String(60), index=True)  # BILL_ID(PRC_…)
+    title: Mapped[str] = mapped_column(Text, nullable=False)  # BILL_NAME
+
+    proposer: Mapped[str | None] = mapped_column(String(200))  # PROPOSER(청원인, "○○외 N인" 원문)
+    introducer: Mapped[str | None] = mapped_column(String(120))  # APPROVER(소개: 국민동의청원/○○의원)
+    is_national_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # 국민동의청원 여부
+    signature_count: Mapped[int | None] = mapped_column(Integer)  # 동의 인원(PROPOSER "외 N인"에서 파싱)
+
+    proposed_date: Mapped[date | None] = mapped_column(Date)  # PROPOSE_DT 접수일
+    committee: Mapped[str | None] = mapped_column(String(120))  # CURR_COMMITTEE 소관위
+    committee_date: Mapped[date | None] = mapped_column(Date)  # COMMITTEE_DT 회부일
+    # 최종 처리결과(PROC_RESULT_CD) — 계류 중이면 null(= '아직 처리 안 됨'을 사실로 드러냄).
+    # 예: 본회의불부의 / 대안반영폐기 / 채택 / 불채택 / 철회. 🟡 공식 코드 원문 그대로.
+    proc_result: Mapped[str | None] = mapped_column(String(60))
+
+    # 🟡 출처·검증
+    source_url: Mapped[str | None] = mapped_column(Text)  # likms billDetail 직링크
+    last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 # ───────────────────────── 테스트 (문항·답변) ─────────────────────────
 class Issue(Base):
     __tablename__ = "issue"

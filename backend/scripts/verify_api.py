@@ -187,6 +187,67 @@ def main() -> int:
     r = client.get("/api/bills", params={"category": "세금"})
     assert r.status_code == 200, r.text  # 분야 필터가 라우팅·쿼리상 동작(데모는 0건 정상)
 
+    # ── 청원 추적 (Phase 2 기능 A) ──
+    print("\n── 청원 데모 시드 ──")
+    from datetime import date, timedelta
+
+    from app.models import Petition  # noqa: E402
+
+    with SessionLocal() as s:
+        s.add_all([
+            Petition(
+                bill_no="2900001", assembly_bill_id="PRC_DEMO_PENDING",
+                title="[데모] 도수치료 급여 전환 재검토 청원",
+                proposer="홍길동외 50,922인", introducer="국민동의청원",
+                is_national_consent=True, signature_count=50922,
+                proposed_date=date.today() - timedelta(days=30),
+                committee="보건복지위원회", committee_date=date.today() - timedelta(days=28),
+                proc_result=None, source_url="https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_DEMO_PENDING",
+            ),
+            Petition(
+                bill_no="2900002", assembly_bill_id="PRC_DEMO_DONE",
+                title="[데모] 공소청법 제정 청원",
+                proposer="김시민외 1인", introducer="박의원외 3인",
+                is_national_consent=False, signature_count=None,
+                proposed_date=date.today() - timedelta(days=90),
+                committee="법제사법위원회", committee_date=date.today() - timedelta(days=88),
+                proc_result="대안반영폐기",
+                source_url="https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_DEMO_DONE",
+            ),
+        ])
+        s.commit()
+
+    print("\n── GET /api/petitions (목록) ──")
+    r = client.get("/api/petitions")
+    assert r.status_code == 200, r.text
+    pet = r.json()
+    print(f"  청원 {len(pet['items'])}건 (계류 {pet['pending']} / 처리완료 {pet['done']})")
+    assert pet["pending"] == 1 and pet["done"] == 1, pet
+    assert pet["notice"], "🟡 중립 고지 동봉 필요"
+    # 최신 접수순 → 데모 계류건(30일 전)이 처리건(90일 전)보다 위
+    assert pet["items"][0]["status"] == "계류", pet["items"][0]
+    assert pet["items"][0]["days_pending"] == 30, pet["items"][0]
+    assert pet["items"][0]["is_national_consent"] and pet["items"][0]["signature_count"] == 50922
+
+    print("\n── GET /api/petitions?status=처리완료 (필터) ──")
+    r = client.get("/api/petitions", params={"status": "처리완료"})
+    done_items = r.json()["items"]
+    assert len(done_items) == 1 and done_items[0]["proc_result"] == "대안반영폐기", done_items
+
+    print("\n── GET /api/petitions/{id} (상세·단계 타임라인) ──")
+    pid2 = pet["items"][0]["id"]
+    r = client.get(f"/api/petitions/{pid2}")
+    assert r.status_code == 200, r.text
+    detail = r.json()
+    print(f"  {detail['title']} · {detail['status']} · 단계 {[st['label'] for st in detail['stages'] if st['done']]}")
+    assert len(detail["stages"]) == 4, detail["stages"]
+    assert detail["stages"][0]["done"] and detail["stages"][1]["done"]  # 접수·회부 done
+    assert not detail["stages"][3]["done"]  # 계류 → 처리 단계 미도달
+    assert detail["notice"]
+
+    print("\n── 404 (없는 청원) ──")
+    assert client.get("/api/petitions/999999").status_code == 404
+
     print("\n✅ API end-to-end 검증 통과")
     return 0
 

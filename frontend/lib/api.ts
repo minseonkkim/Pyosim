@@ -261,6 +261,67 @@ export function fetchBillCategories(): Promise<{ items: CategoryCount[] }> {
   return getJSON<{ items: CategoryCount[] }>(`/api/bills/categories`);
 }
 
+// ───────── 청원 추적 (Phase 2 기능 A, 민심 레이어) ─────────
+export interface PetitionStage {
+  label: string;
+  date: string | null;
+  done: boolean;
+}
+
+export interface PetitionCard {
+  id: number;
+  title: string;
+  committee: string | null;
+  is_national_consent: boolean;
+  signature_count: number | null;
+  proposed_date: string | null;
+  status: string; // 계류 / 처리완료
+  proc_result: string | null;
+  days_pending: number | null;
+}
+
+export interface PetitionFeed {
+  items: PetitionCard[];
+  pending: number;
+  done: number;
+  notice: string;
+}
+
+export interface PetitionDetail {
+  id: number;
+  bill_no: string;
+  title: string;
+  proposer: string | null;
+  introducer: string | null;
+  is_national_consent: boolean;
+  signature_count: number | null;
+  committee: string | null;
+  proposed_date: string | null;
+  committee_date: string | null;
+  status: string;
+  proc_result: string | null;
+  days_pending: number | null;
+  stages: PetitionStage[];
+  likms_url: string | null;
+  last_verified: string | null;
+  notice: string;
+}
+
+export function fetchPetitions(
+  opts: { status?: string; q?: string; limit?: number } = {},
+): Promise<PetitionFeed> {
+  const p = new URLSearchParams();
+  if (opts.status) p.set("status", opts.status);
+  if (opts.q) p.set("q", opts.q);
+  if (opts.limit) p.set("limit", String(opts.limit));
+  const qs = p.toString();
+  return getJSON<PetitionFeed>(`/api/petitions${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchPetition(id: number): Promise<PetitionDetail> {
+  return getJSON<PetitionDetail>(`/api/petitions/${id}`);
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);

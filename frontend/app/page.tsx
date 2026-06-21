@@ -27,6 +27,12 @@ const DOORS: Door[] = [
     desc: "현역 300명 — 발의·표결 기록을 한 곳에서",
   },
   {
+    href: "/petitions",
+    emoji: "🙋",
+    title: "청원, 지금 어디?",
+    desc: "시민이 올린 청원이 국회 어디까지 갔는지",
+  },
+  {
     href: "/tax",
     emoji: "🧾",
     title: "내 세금",

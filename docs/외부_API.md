@@ -72,6 +72,7 @@ python -m jobs.run --job bills                # 표결된 의안 + 집계 1,596
 python -m jobs.run --job vote_records --limit 50   # 의원별 찬반 (rate limit 대응 상한)
 python -m jobs.run --job proposers           # 발의법률안 + 대표발의자 연결 (~17.5k)
 python -m jobs.run --job committees           # 위원회 엔티티 + 의원 위원회경력(제22대)
+python -m jobs.run --job petitions            # 청원 계류·처리현황 (민심 레이어 기능 A, 305건)
 python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 ```
 
@@ -117,8 +118,8 @@ python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 
 | SERVICE | 내용 | 건수(22대) | 주요 필드 | 상태 |
 | --- | --- | --- | --- | --- |
-| `nvqbafvaajdiqhehi` | 청원 계류현황 | 286 | `BILL_ID`,`BILL_NAME`,`PROPOSER`,`CURR_COMMITTEE`,`PROPOSE_DT`,`LINK_URL` | ✅ AGE 필요 |
-| `ncryefyuaflxnqbqo` | 청원 처리현황 | 19 | +`PROC_RESULT_CD`(최종처리) | ✅ AGE 필요 |
+| `nvqbafvaajdiqhehi` | 청원 계류현황 | 286 | `BILL_NO`,`BILL_ID`,`BILL_NAME`,`PROPOSER`,`APPROVER`(소개),`CURR_COMMITTEE`,`PROPOSE_DT`,`COMMITTEE_DT`,`LINK_URL` | ✅ **사용 중**(`--job petitions`, AGE) |
+| `ncryefyuaflxnqbqo` | 청원 처리현황 | 19 | +`PROC_RESULT_CD`(최종처리: 본회의불부의/대안반영폐기 등) | ✅ **사용 중**(AGE) |
 | `PTTRCP`/`PTTINFODETAIL`/`PTTINFOPPSR` | 청원 접수목록·상세·소개의원 | — | — | 🔑 |
 | `NAMEMBERLEGIPTT` | 국회의원 청원현황(의원↔청원) | — | — | 🔑 |
 | `PTTJUDGE`/`PTTCNTMAIN` | 청원 심사정보·통계 | — | — | 🔑 |

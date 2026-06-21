@@ -24,6 +24,7 @@ from app.models import (  # noqa: E402,F401 — 적재에서 재export
     CommitteeMembership,
     Party,
     Person,
+    Petition,
     Vote,
     VoteChoice,
     VoteRecord,

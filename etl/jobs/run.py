@@ -10,6 +10,7 @@
   python -m jobs.run --job proposer_kinds             # 제안자 구분(정부·위원장) 보강
   python -m jobs.run --job committees                 # 위원회 엔티티 + 의원 위원회경력(제22대)
   python -m jobs.run --job bill_stages                # 본회의 처리 단계별 의결일(날짜 타임라인)
+  python -m jobs.run --job petitions                  # 청원 계류·처리현황(민심 레이어 기능 A)
   python -m jobs.run --job propose_dates --limit 50   # likms 상세 '제안일자' → 발의일(대안 보강)
   python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
   python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
@@ -159,6 +160,21 @@ def _bill_stages(args) -> None:
     finally:
         session.close()
     print(f"bill_stages 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("petitions")
+def _petitions(args) -> None:
+    # 청원 계류현황(nvqbafvaajdiqhehi) + 처리현황(ncryefyuaflxnqbqo) → Petition (기능 A)
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_petitions(
+            session, _build_client(), age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"petitions 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("proposer_kinds")

@@ -6,6 +6,7 @@ from app.api import router as api_router
 from app.bills import router as bills_router
 from app.config import settings
 from app.persons import router as persons_router
+from app.petitions import router as petitions_router
 
 app = FastAPI(title="표심 · Pyosim API", version="0.1.0")
 
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(persons_router)
 app.include_router(bills_router)
+app.include_router(petitions_router)
 
 
 @app.get("/health")
