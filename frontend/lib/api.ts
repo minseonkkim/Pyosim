@@ -472,6 +472,29 @@ export function watchSeen(
   });
 }
 
+// ───────── 데이터 신선도 (🤖 자동 갱신 파이프라인 가시화) ─────────
+// 1일 1회 갱신이 마지막으로 성공한 시각 → 앱바 '데이터 기준일' 배지(🟡 신뢰: 살아있음을 사실로).
+export interface PipelineRunInfo {
+  started_at: string;
+  finished_at: string | null;
+  ok: boolean;
+  trigger: string;
+  job_count: number;
+  fail_count: number;
+  duration_ms: number | null;
+  failed_jobs: string[];
+}
+
+export interface PipelineHealth {
+  last_run: PipelineRunInfo | null;
+  last_success_at: string | null; // 신선도 기준 시각(ISO, tz 포함)
+  notice: string;
+}
+
+export function fetchPipelineHealth(): Promise<PipelineHealth> {
+  return getJSON<PipelineHealth>(`/api/health/pipeline`);
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);
