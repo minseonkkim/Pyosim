@@ -17,6 +17,8 @@
   python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
   python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
   python -m jobs.run --job categorize                 # 제목 키워드 → 생활 카테고리(세금·노동·주거…)
+  python -m jobs.run --job daily --trigger scheduler  # 🤖 1일 1회 자동 갱신(감시견 추적 데이터 일괄)
+  python -m jobs.run --job daily --only petitions,bill_stages  # 일부 잡만
   python -m jobs.run --job bills --dry-run            # 미기록(미리보기, DB 연결은 필요)
 
 키는 etl/.env 의 ASSEMBLY_API_KEY·GEMINI_API_KEY, DB 는 DATABASE_URL.
@@ -297,6 +299,32 @@ def _categorize(args) -> None:
     print(f"categorize 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("daily")
+def _daily(args) -> None:
+    # 1일 1회 자동 갱신 — 감시견 추적 데이터(청원·법안·의원)를 한 번에 새로 적재.
+    # 잡별 격리(하나 실패해도 계속) + 실행 기록(PipelineRun, 신선도·모니터링).
+    from jobs import pipeline
+
+    only = [s.strip() for s in args.only.split(",") if s.strip()] if args.only else None
+    session = _build_session()
+    try:
+        summary = pipeline.run_pipeline(
+            session,
+            _build_client(),
+            profile=args.profile,
+            only=only,
+            age=args.age,
+            dry_run=args.dry_run,
+            limit=args.limit,
+            trigger=args.trigger,
+        )
+    finally:
+        session.close()
+    # 부분 실패 시 비-0 종료코드 → 스케줄러가 실패를 감지(모니터링).
+    if not summary["ok"]:
+        raise SystemExit(1)
+
+
 @register("budget")
 def _budget(args) -> None:
     # 열린재정 OPFI165(결산)+OPFI172(본예산) → frontend/lib/budget-data.json (세금 계산기)
@@ -314,6 +342,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--age", default="22", help="국회 대수 (기본 22)")
     parser.add_argument("--limit", type=int, default=None, help="처리 건수 상한")
     parser.add_argument("--year", type=int, default=None, help="회계연도 (budget 잡; 미지정 시 최근 결산연도)")
+    parser.add_argument("--profile", default="daily", help="daily 잡의 프로필 (기본 daily)")
+    parser.add_argument("--only", default=None, help="daily 잡에서 이 이름들만 실행(쉼표 구분)")
+    parser.add_argument("--trigger", default="manual", help="daily 실행 출처 기록 (scheduler/manual)")
     parser.add_argument("--dry-run", action="store_true", help="DB 미기록(미리보기)")
     args = parser.parse_args(argv)
 

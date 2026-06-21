@@ -27,6 +27,7 @@ from app.models import (  # noqa: E402,F401 — 적재에서 재export
     Party,
     Person,
     Petition,
+    PipelineRun,
     Vote,
     VoteChoice,
     VoteRecord,

@@ -467,3 +467,29 @@ class Relationship(Base):
 
     curated_by: Mapped[str | None] = mapped_column(String(100))
     curated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ───────────────────────── 자동 갱신 파이프라인 (Phase 2 🤖) ─────────────────────────
+class PipelineRun(Base):
+    """1일 1회 데이터 갱신 실행 기록 — 신선도·모니터링 (감시견 알림 자동 점등의 전제).
+
+    `python -m jobs.run --job daily` 한 번이 한 행. 잡별 성공/실패·소요시간·통계를
+    `jobs`(JSON)에 담는다. 이 기록으로 "마지막 갱신은 언제·성공했나"를 답하고,
+    프론트에 '데이터 기준일'을 노출한다(🟡 신뢰: 데이터가 살아있음을 사실로 보임).
+
+    🟡 PII 없음 — 시스템 실행 메타만 저장(세션·개인정보 무관).
+    """
+    __tablename__ = "pipeline_run"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ok: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # 전 잡 무사 완료 여부
+    trigger: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)  # scheduler/manual
+    job_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fail_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    jobs: Mapped[dict | None] = mapped_column(JSON)  # 잡별 {status, stats, duration_ms, error}
+    error: Mapped[str | None] = mapped_column(Text)  # 파이프라인 수준 치명적 오류
