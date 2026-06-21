@@ -297,6 +297,43 @@ class Petition(Base):
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class LawNotice(Base):
+    """입법예고 + 시민 찬반 의견 집계 — "법안에 시민이 뭐라 했나 vs 통과" (Phase 2 기능 B-4.4).
+
+    민심 레이어의 둘째 축: 법안 입법예고 기간에 시민이 남긴 찬성/반대 의견을 집계해
+    국회 처리(통과 여부)와 대비한다("반대가 압도적인데 통과됐나?").
+
+    메타데이터 출처: 열린국회정보 종료된 입법예고(`nohgwtzsamojdozky`)·진행중(`nknalejkafmvgzmpt`).
+      API 는 의안 메타(제목·소관위·예고종료일·링크)만 주고 **찬반 카운트는 없다**(라이브 확인).
+    찬반 집계 출처: 국민참여입법시스템(pal.assembly.go.kr) 의견목록 공개 페이지를
+      입장별(searchConRng 0=전체/1=찬성/2=반대) 전체 건수로 스크랩한다(jobs/lawnotice_opinions.py).
+    🟡 의견 본문·작성자는 저장하지 않고 집계 수치만 보존. 처리 대비는 공식 일자(Bill)만 사용.
+    """
+    __tablename__ = "law_notice"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    bill_no: Mapped[str] = mapped_column(String(40), unique=True, nullable=False, index=True)  # BILL_NO
+    assembly_bill_id: Mapped[str | None] = mapped_column(String(60), index=True)  # BILL_ID(PRC_…) — Bill 연결+스크랩 키
+    title: Mapped[str] = mapped_column(Text, nullable=False)  # BILL_NAME
+
+    proposer: Mapped[str | None] = mapped_column(String(200))  # PROPOSER ("○○의원 등 N인")
+    proposer_kind: Mapped[str | None] = mapped_column(String(20))  # PROPOSER_KIND_CD (의원/정부/위원장)
+    committee: Mapped[str | None] = mapped_column(String(120))  # CURR_COMMITTEE 소관위
+    notice_end_date: Mapped[date | None] = mapped_column(Date)  # NOTI_ED_DT 예고 종료일
+    is_ongoing: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # 진행중 예고 여부
+
+    # 시민 찬반 의견 집계(스크랩) — 미수집이면 null. 🟡 본문 없이 입장별 건수만.
+    opinion_total: Mapped[int | None] = mapped_column(Integer)  # searchConRng=0 전체
+    agree_count: Mapped[int | None] = mapped_column(Integer)  # searchConRng=1 찬성
+    oppose_count: Mapped[int | None] = mapped_column(Integer)  # searchConRng=2 반대
+    etc_count: Mapped[int | None] = mapped_column(Integer)  # 전체 - 찬성 - 반대
+    opinion_fetched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 마지막 스크랩 시각
+
+    # 🟡 출처·검증
+    source_url: Mapped[str | None] = mapped_column(Text)  # LINK_URL (pal.assembly 입법예고 view)
+    last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 # ───────────────────────── 테스트 (문항·답변) ─────────────────────────
 class Issue(Base):
     __tablename__ = "issue"

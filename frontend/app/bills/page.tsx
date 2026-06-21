@@ -18,12 +18,15 @@ import {
 const FEED_LIMIT = 1000; // 사실상 전체(정쟁 제외·표결 있는 정책 법안만이라 규모 한정적)
 const PAGE = 20; // 무한스크롤 한 번에 더 그리는 카드 수
 
+type Mode = "all" | "contested" | "opinions";
+
 export default function BillsFeedPage() {
   const [feed, setFeed] = useState<BillCard[] | null>(null);
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [cats, setCats] = useState<CategoryCount[]>([]);
   const [active, setActive] = useState<string | null>(null); // 선택 카테고리(없으면 전체)
+  const [mode, setMode] = useState<Mode>("all"); // 전체 / 표결로 갈린 / 시민 의견 많은
   const [visible, setVisible] = useState(PAGE);
 
   // 카테고리 칩은 한 번만 불러온다(피드 필터와 무관하게 고정).
@@ -33,18 +36,18 @@ export default function BillsFeedPage() {
       .catch(() => setCats([]));
   }, []);
 
-  // 선택 카테고리가 바뀌면 피드를 다시 불러오고, 처음부터 다시 그린다.
+  // 모드·카테고리가 바뀌면 피드를 다시 불러오고, 처음부터 다시 그린다.
   useEffect(() => {
     setFeed(null);
     setErr(null);
     setVisible(PAGE);
-    fetchBills(FEED_LIMIT, active ?? undefined)
+    fetchBills(FEED_LIMIT, active ?? undefined, mode === "all" ? undefined : mode)
       .then((f) => {
         setFeed(f.items);
         setNotice(f.notice);
       })
       .catch((e) => setErr((e as Error).message));
-  }, [active]);
+  }, [active, mode]);
 
   const shown = feed?.slice(0, visible) ?? [];
   const hasMore = feed !== null && visible < feed.length;
@@ -70,10 +73,17 @@ export default function BillsFeedPage() {
   return (
     <main>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>의견이 갈린 법안</h1>
-      <p className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
-        국회에서 표가 팽팽했거나 정당 입장이 갈린 법안들이에요. 어떤 점이 좋고
-        무엇이 우려되는지 한눈에 보고, 내 생각과 견줘보세요.
+      <p className="muted" style={{ fontSize: 13.5, marginBottom: 12 }}>
+        국회 표결로 갈렸거나, 입법예고 때 시민 의견이 쏟아진 법안이에요. 아래에서 보기를
+        바꿔가며, 내 생각과 견줘보세요.
       </p>
+
+      {/* 보기 전환 — 전체 / 표결로 갈린 / 시민 의견 많은(입법예고) */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+        <ModeChip label="전체" on={mode === "all"} onClick={() => setMode("all")} />
+        <ModeChip label="⚖️ 표결로 갈린" on={mode === "contested"} onClick={() => setMode("contested")} />
+        <ModeChip label="🗣 시민 의견 많은" on={mode === "opinions"} onClick={() => setMode("opinions")} />
+      </div>
 
       {/* 생활 카테고리 칩 — 내 관심 분야로 좁혀보기 */}
       {cats.length > 0 && (
@@ -143,7 +153,28 @@ function CatChip({
   );
 }
 
+function ModeChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="chip"
+      style={{
+        fontSize: 12.5,
+        fontWeight: on ? 700 : 500,
+        cursor: "pointer",
+        background: on ? "var(--ink-800)" : "var(--surface)",
+        color: on ? "#fff" : "var(--muted)",
+        border: on ? "none" : "1px solid var(--border)",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function BillCardItem({ b }: { b: BillCard }) {
+  const hasVote = b.yes != null || b.no != null;
   const yes = b.yes ?? 0;
   const no = b.no ?? 0;
   const total = yes + no || 1;
@@ -154,17 +185,28 @@ function BillCardItem({ b }: { b: BillCard }) {
       style={{ display: "block", textDecoration: "none", color: "var(--fg)" }}
     >
       <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-        <span
-          className="chip"
-          style={{
-            fontSize: 11.5,
-            fontWeight: 700,
-            background: b.party_split ? "var(--ink-800)" : "var(--ink-100)",
-            color: b.party_split ? "#fff" : "var(--muted)",
-          }}
-        >
-          {b.party_split ? "⚡ 정당 입장 갈림" : b.contested_reason}
-        </span>
+        {/* 시민 의견 배지 — 진입 후크(있을 때 가장 먼저) */}
+        {b.opinion_total != null && (
+          <span
+            className="chip"
+            style={{ fontSize: 11.5, fontWeight: 700, background: "var(--ink-800)", color: "#fff" }}
+          >
+            🗣 의견 {b.opinion_total.toLocaleString()}건
+            {b.opinion_lean ? ` · ${b.opinion_lean} 우세` : ""}
+          </span>
+        )}
+        {b.party_split ? (
+          <span
+            className="chip"
+            style={{ fontSize: 11.5, fontWeight: 700, background: "var(--ink-800)", color: "#fff" }}
+          >
+            ⚡ 정당 입장 갈림
+          </span>
+        ) : b.opinion_total == null ? (
+          <span className="chip" style={{ fontSize: 11.5, fontWeight: 700, background: "var(--ink-100)", color: "var(--muted)" }}>
+            {b.contested_reason}
+          </span>
+        ) : null}
         {b.category && (
           <span
             className="chip"
@@ -184,17 +226,23 @@ function BillCardItem({ b }: { b: BillCard }) {
         {b.title}
       </div>
 
-      {/* 찬반 미니 바 — 긴장을 시각적으로 */}
-      <div style={{ marginTop: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
-          <span style={{ fontWeight: 600 }}>찬성 {yes}</span>
-          <span className="muted">반대 {no}</span>
+      {/* 찬반 미니 바 — 표결이 있을 때만(시민 의견 보기엔 계류 법안이 많아 표결 없음) */}
+      {hasVote ? (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
+            <span style={{ fontWeight: 600 }}>찬성 {yes}</span>
+            <span className="muted">반대 {no}</span>
+          </div>
+          <div style={{ display: "flex", height: 7, borderRadius: 999, overflow: "hidden", background: "var(--ink-100)" }}>
+            <span style={{ width: `${(yes / total) * 100}%`, background: "var(--ink-800)" }} />
+            <span style={{ width: `${(no / total) * 100}%`, background: "var(--ink-400)" }} />
+          </div>
         </div>
-        <div style={{ display: "flex", height: 7, borderRadius: 999, overflow: "hidden", background: "var(--ink-100)" }}>
-          <span style={{ width: `${(yes / total) * 100}%`, background: "var(--ink-800)" }} />
-          <span style={{ width: `${(no / total) * 100}%`, background: "var(--ink-400)" }} />
+      ) : b.opinion_total != null ? (
+        <div className="muted" style={{ marginTop: 8, fontSize: 12.5 }}>
+          아직 본회의 표결 전 — 입법예고에서 시민 {b.opinion_total.toLocaleString()}명이 의견을 남겼어요.
         </div>
-      </div>
+      ) : null}
 
       {/* AI 한 줄 요약(있을 때만) — 좋은점/문제점 대칭 */}
       {b.pro && b.con && (

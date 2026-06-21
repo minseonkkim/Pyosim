@@ -11,6 +11,8 @@
   python -m jobs.run --job committees                 # 위원회 엔티티 + 의원 위원회경력(제22대)
   python -m jobs.run --job bill_stages                # 본회의 처리 단계별 의결일(날짜 타임라인)
   python -m jobs.run --job petitions                  # 청원 계류·처리현황(민심 레이어 기능 A)
+  python -m jobs.run --job lawnotices                 # 입법예고 메타데이터(기능 B-4.4)
+  python -m jobs.run --job lawnotice_opinions --limit 50  # 입법예고 시민 찬반 의견 집계(pal 스크랩)
   python -m jobs.run --job propose_dates --limit 50   # likms 상세 '제안일자' → 발의일(대안 보강)
   python -m jobs.run --job bill_content --limit 50    # likms 의안원문 본문 수집
   python -m jobs.run --job bill_summary --limit 50    # 본문 → 좋은점/문제점 AI 요약
@@ -175,6 +177,36 @@ def _petitions(args) -> None:
     finally:
         session.close()
     print(f"petitions 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("lawnotices")
+def _lawnotices(args) -> None:
+    # 입법예고 메타데이터(nohgwtzsamojdozky+nknalejkafmvgzmpt) → LawNotice (기능 B-4.4)
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_lawnotices(
+            session, _build_client(), age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"lawnotices 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("lawnotice_opinions")
+def _lawnotice_opinions(args) -> None:
+    # 국민참여입법시스템(pal) 의견목록 스크랩 → LawNotice 찬반 집계 (API 아님 — client 불필요)
+    from jobs import lawnotice_opinions
+
+    session = _build_session()
+    try:
+        stats = lawnotice_opinions.run_lawnotice_opinions(
+            session, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"lawnotice_opinions 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("proposer_kinds")

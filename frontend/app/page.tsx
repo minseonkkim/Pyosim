@@ -18,7 +18,7 @@ const DOORS: Door[] = [
     href: "/bills",
     emoji: "⚖️",
     title: "갈린 법안",
-    desc: "표가 팽팽했거나 정당 입장이 갈렸던 법안만",
+    desc: "표결로 갈렸거나, 시민 의견이 쏟아진 법안",
   },
   {
     href: "/persons",
@@ -52,7 +52,7 @@ export default function Home() {
     <main>
       <TrackOnMount event="landing" />
       <span className="chip" style={{ marginTop: 8 }}>
-        실제 국회 표결 기반
+        실제 국회 데이터 기반
       </span>
 
       <h1
@@ -141,7 +141,7 @@ export default function Home() {
           color: "var(--muted)",
         }}
       >
-        <li>모든 내용은 실제 발의·표결된 법안이 출처예요</li>
+        <li>모든 내용은 국회 공식 기록(발의·표결·시민 의견)이 출처예요</li>
         <li>특정 정당·인물을 추천하지 않습니다 — &ldquo;표결 일치도&rdquo;일 뿐</li>
       </ul>
     </main>

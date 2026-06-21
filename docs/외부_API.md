@@ -73,6 +73,8 @@ python -m jobs.run --job vote_records --limit 50   # 의원별 찬반 (rate limi
 python -m jobs.run --job proposers           # 발의법률안 + 대표발의자 연결 (~17.5k)
 python -m jobs.run --job committees           # 위원회 엔티티 + 의원 위원회경력(제22대)
 python -m jobs.run --job petitions            # 청원 계류·처리현황 (민심 레이어 기능 A, 305건)
+python -m jobs.run --job lawnotices           # 입법예고 메타데이터 (기능 B-4.4, 17,709건)
+python -m jobs.run --job lawnotice_opinions --limit 50  # 입법예고 시민 찬반 의견(pal 스크랩)
 python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 ```
 
@@ -124,14 +126,25 @@ python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 | `NAMEMBERLEGIPTT` | 국회의원 청원현황(의원↔청원) | — | — | 🔑 |
 | `PTTJUDGE`/`PTTCNTMAIN` | 청원 심사정보·통계 | — | — | 🔑 |
 
-#### 입법예고 (Phase 2 기능 B-4.4 — 기획서가 적은 '웹/스크래핑' 대신 API 직접 수집 가능)
+#### 입법예고 (Phase 2 기능 B-4.4 — **구현 완료** 2026-06-21)
 
-| SERVICE | 내용 | 상태 |
-| --- | --- | --- |
-| `nknalejkafmvgzmpt` | 진행중 입법예고 | ⬜ 현재 0건(회기 따라 채워짐) |
-| `nohgwtzsamojdozky` | 종료된 입법예고 | 🔑 (DAE_NUM 등 필요) |
+| SERVICE | 내용 | 22대 건수 | 주요 필드 | 상태 |
+| --- | --- | --- | --- | --- |
+| `nohgwtzsamojdozky` | 종료된 입법예고 | 17,709 | `BILL_ID`,`BILL_NO`,`BILL_NAME`,`PROPOSER`,`PROPOSER_KIND_CD`,`CURR_COMMITTEE`,`NOTI_ED_DT`,`LINK_URL` | ✅ **사용 중**(`--job lawnotices`, AGE 필수) |
+| `nknalejkafmvgzmpt` | 진행중 입법예고 | 0 | (동일) | ⬜ 현재 0건(회기 따라 채워짐) |
 
-> ⚠️ 단, 이 두 서비스가 시민 **찬반 의견 카운트**까지 주는지는 파라미터 채워 재확인 필요(메타만일 수 있음). 의견 본문/집계가 없으면 국민참여입법센터(opinion.lawmaking.go.kr, 별도 무료 OC 키)와 병행 검토.
+> ⚠️ **확정(라이브):** 이 API 는 의안 **메타데이터만** 주고 시민 **찬반 의견 카운트는 없다**.
+> → 찬반은 **국민참여입법시스템(pal.assembly.go.kr) 의견목록 공개 페이지를 스크랩**한다(별도 OC 키 불필요).
+> `LINK_URL` 이 그 페이지를 가리킴. (ETL `--job lawnotice_opinions`, `etl/jobs/lawnotice_opinions.py`)
+
+**찬반 스크랩 방법(라이브 역추적 확정):**
+- `GET /napal/lgsltpa/lgsltpaOpn/list.do?lgsltPaId={BILL_ID}&searchConClosed={1=종료/0=진행}&searchConRng=0&pageUnit=100&pageIndex={n}`
+- 전체 의견 수 = 헤더 `<div class="board_count"><strong>N</strong>`.
+- ⚠️ `searchConRng` 은 **찬반 필터가 아님**(0=전체·1=나의의견[로그인]·2=공개의견). 찬반 입장은 각 의견 **행의 텍스트**(`찬성합니다`/`반대합니다`/그 외=기타)에만 있음.
+- 따라서 입장별 필터가 없어 **페이지를 넘기며 '찬성합니다'/'반대합니다' 등장 횟수를 센다**. 기타 = 전체 − 찬성 − 반대.
+- 의안당 ceil(전체/100) 페이지. 의견 폭주 의안(수천 건=수십 페이지)은 `MAX_PAGES`(80)로 상한 → 초과 시 전체 수만 저장(분해 보류).
+- 🟡 의견 본문·작성자는 저장 안 하고 입장별 집계만. 비공식 스크래핑(robots/ToS 유의)이라 sleep + `only_linked`(우리 Bill 과 연결된 예고만) 선별 수집.
+- 결과는 `LawNotice`(마이그레이션 0014) 에 적재되고, **법안 상세(`/api/bills/{id}`)의 `civic_opinion`** 으로 함께 노출됨(별도 페이지 없이 법안 페이지에 통합 — 민심 vs 국회).
 
 #### 의안 심사·단계·공동발의 (Phase 1-3 / 2-5 보강)
 

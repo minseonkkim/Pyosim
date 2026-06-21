@@ -22,6 +22,8 @@ from app.models import (  # noqa: E402,F401 — 적재에서 재export
     Bill,
     Committee,
     CommitteeMembership,
+    LawNotice,
+    PalStatus,
     Party,
     Person,
     Petition,

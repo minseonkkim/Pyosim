@@ -9,6 +9,7 @@
   committees    위원회 + 의원 위원회경력(제22대) nxrvzonlafugpqjuh+nyzrglyvagmrypezq → Committee, CommitteeMembership
   bill_stages   본회의 처리 단계별 의결일        nwbpacrgavhjryiph  → Bill(단계 일자)
   petitions     청원 계류·처리현황(기능 A)        nvqbafvaajdiqhehi+ncryefyuaflxnqbqo → Petition
+  lawnotices    입법예고 메타데이터(기능 B-4.4)    nohgwtzsamojdozky+nknalejkafmvgzmpt → LawNotice
 
 원칙(🟡): 수집 레코드에 1차 출처(likms LINK_URL) 자동 부착, last_verified 기록.
 모든 잡 멱등(upsert). dry_run 시 DB 미기록(조회·변환만).
@@ -26,7 +27,9 @@ from jobs.db import (
     Bill,
     Committee,
     CommitteeMembership,
+    LawNotice,
     Party,
+    PalStatus,
     Person,
     Petition,
     Vote,
@@ -46,6 +49,8 @@ SVC_CMT_CAREER = "nyzrglyvagmrypezq"  # 국회의원 위원회 경력(MONA_CD↔
 SVC_PLENARY_BILLS = "nwbpacrgavhjryiph"  # 본회의 처리안건(법률안) — 단계별 의결일
 SVC_PETITION_PENDING = "nvqbafvaajdiqhehi"  # 청원 계류현황(처리결과 없음)
 SVC_PETITION_DONE = "ncryefyuaflxnqbqo"  # 청원 처리현황(PROC_RESULT_CD 포함)
+SVC_LAWNOTICE_ONGOING = "nknalejkafmvgzmpt"  # 진행중 입법예고(현재 0건, 회기 따라 채워짐)
+SVC_LAWNOTICE_DONE = "nohgwtzsamojdozky"  # 종료된 입법예고(AGE 필수, 22대 17,709건)
 DEFAULT_AGE = "22"
 
 MEMBER_SOURCE = "https://open.assembly.go.kr/portal/assm/search/memberSchPage.do"
@@ -605,3 +610,62 @@ def run_petitions(
         session.commit()
     pending = sum(1 for p in existing.values() if p.proc_result is None)
     return {"new": n_new, "updated": n_upd, "total": len(existing), "pending": pending}
+
+
+# ───────────────────────── law notices (입법예고 메타데이터) ─────────────────────────
+def run_lawnotices(
+    session: Session, client: AssemblyClient, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """입법예고 메타데이터 → LawNotice (Phase 2 기능 B-4.4).
+
+    종료된 입법예고(`nohgwtzsamojdozky`, AGE) + 진행중(`nknalejkafmvgzmpt`).
+    API 는 메타(제목·제안자·소관위·예고종료일·링크)만 주고 찬반 카운트는 없다 →
+    찬반 집계는 별도 스크래핑 잡(lawnotice_opinions)이 채운다.
+    의안번호(BILL_NO)로 멱등 upsert. 매칭되는 Bill 에는 pal_status/pal_url 도 부착.
+    🟡 공개 기록 값만. 의견 본문 아님(메타만).
+    """
+    existing = {n.bill_no: n for n in session.scalars(select(LawNotice)).all()}
+    bills = {b.bill_no: b for b in session.scalars(select(Bill)).all()}
+    n_new = n_upd = n_linked = 0
+
+    def _upsert(row: dict, *, ongoing: bool) -> None:
+        nonlocal n_new, n_upd, n_linked
+        bill_no = (row.get("BILL_NO") or "").strip()
+        if not bill_no:
+            return
+        n = existing.get(bill_no)
+        if n is None:
+            n = LawNotice(bill_no=bill_no)
+            existing[bill_no] = n
+            n_new += 1
+            if not dry_run:
+                session.add(n)
+        else:
+            n_upd += 1
+        n.assembly_bill_id = (row.get("BILL_ID") or "").strip() or None
+        n.title = (row.get("BILL_NAME") or "").strip()
+        n.proposer = (row.get("PROPOSER") or "").strip() or None
+        n.proposer_kind = (row.get("PROPOSER_KIND_CD") or "").strip() or None
+        n.committee = (row.get("CURR_COMMITTEE") or "").strip() or None
+        n.notice_end_date = _parse_date(row.get("NOTI_ED_DT"))
+        n.is_ongoing = ongoing
+        n.source_url = (row.get("LINK_URL") or "").strip() or None
+        n.last_verified = _now()
+
+        # 매칭되는 Bill 에 입법예고 흔적 부착(로드맵 1-3/2-5 토대 필드 활용)
+        bill = bills.get(bill_no)
+        if bill is not None:
+            bill.pal_status = PalStatus.진행중 if ongoing else PalStatus.종료
+            bill.pal_url = n.source_url
+            n_linked += 1
+
+    for row in client.iter_rows(SVC_LAWNOTICE_DONE, params={"AGE": age}, max_rows=limit):
+        _upsert(row, ongoing=False)
+    # 진행중 예고는 가장 최신 상태이므로 종료 뒤에 적용(같은 의안이면 진행중으로 덮어씀)
+    for row in client.iter_rows(SVC_LAWNOTICE_ONGOING, params={"AGE": age}, max_rows=limit):
+        _upsert(row, ongoing=True)
+
+    if not dry_run:
+        session.commit()
+    return {"new": n_new, "updated": n_upd, "total": len(existing), "bill_linked": n_linked}

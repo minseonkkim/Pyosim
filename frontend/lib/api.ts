@@ -185,6 +185,17 @@ export interface FunnelStep {
   date: string | null;
 }
 
+// 입법예고 기간 시민 찬반 의견 집계 (기능 B-4.4) — 법안 상세에 함께 표시(민심 vs 국회).
+export interface CivicOpinion {
+  total: number;
+  agree: number | null;
+  oppose: number | null;
+  etc: number | null;
+  pal_url: string | null;
+  notice: string;
+  method_note: string;
+}
+
 export interface BillDetail {
   id: number;
   bill_no: string;
@@ -206,6 +217,7 @@ export interface BillDetail {
   party_breakdown: PartyVote[];
   voters: Voter[];
   funnel: FunnelStep[];
+  civic_opinion: CivicOpinion | null;
   notice: string;
 }
 
@@ -238,6 +250,8 @@ export interface BillCard {
   party_split: boolean;
   pro: string | null;
   con: string | null;
+  opinion_total: number | null; // 입법예고 시민 의견 수(있을 때만) — 진입 후크
+  opinion_lean: string | null; // 찬성/반대 우세
 }
 
 export interface BillFeed {
@@ -245,9 +259,14 @@ export interface BillFeed {
   notice: string;
 }
 
-export function fetchBills(limit = 20, category?: string): Promise<BillFeed> {
+export function fetchBills(
+  limit = 20,
+  category?: string,
+  sort?: "contested" | "opinions",
+): Promise<BillFeed> {
   const p = new URLSearchParams({ limit: String(limit) });
   if (category) p.set("category", category);
+  if (sort) p.set("sort", sort);
   return getJSON<BillFeed>(`/api/bills?${p.toString()}`);
 }
 

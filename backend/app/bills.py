@@ -23,7 +23,7 @@ from app.bill_content import fetch_bill_content
 from app.bill_summary import summarize_bill
 from app.config import settings
 from app.db import get_db
-from app.models import Bill, Party, Person, Vote, VoteChoice, VoteRecord
+from app.models import Bill, LawNotice, Party, Person, Vote, VoteChoice, VoteRecord
 from app.persons import PartyBrief
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,16 @@ SUMMARY_NOTICE = (
 FEED_NOTICE = (
     "정쟁·절차성 안건을 제외하고, 본회의에서 의견이 갈린(반대표가 많거나 정당 입장이 갈린) "
     "정책 법안을 보여드립니다. 추천이 아니라 '논쟁이 있었다'는 사실에 따른 선별입니다."
+)
+
+# 입법예고 시민 의견(기능 B-4.4) — 출처·방법 고지 (🟡)
+CIVIC_NOTICE = (
+    "입법예고 의견 수는 국회 국민참여입법시스템의 공개 집계를 그대로 옮긴 것입니다. "
+    "찬성·반대·기타는 시민이 의견 등록 시 선택한 입장이며, 의견 내용·작성자는 담지 않습니다."
+)
+CIVIC_METHOD = (
+    "입법예고 의견은 관심 있는 시민이 자발적으로 남기는 것이라 반대 의견이 많이 모이는 "
+    "경향이 있습니다. '여론 전체'가 아니라 '의견을 낸 시민들의 입장 분포'입니다."
 )
 
 # 정쟁성·절차성 안건 — 중립성(🟡)·일상 관련성 위해 피드에서 제외(discriminating_bills 와 동일 기준)
@@ -95,6 +105,21 @@ class FunnelStep(BaseModel):
     date: date | None  # 단계 의결일(있으면) — 🟡 공식 일자 그대로
 
 
+class CivicOpinion(BaseModel):
+    """입법예고 기간 시민 찬반 의견 집계 (기능 B-4.4) — 본문 없이 수치만.
+
+    출처: 국민참여입법시스템(pal.assembly.go.kr) 공개 집계(LawNotice).
+    찬반 분해(agree/oppose)가 보류된 대형 의안은 total 만 채워질 수 있다(agree=None).
+    """
+    total: int  # 전체 의견 수
+    agree: int | None  # 찬성(분해 보류 시 None)
+    oppose: int | None  # 반대
+    etc: int | None  # 기타
+    pal_url: str | None  # 국민참여입법시스템 입법예고 원문
+    notice: str
+    method_note: str
+
+
 class BillDetail(BaseModel):
     id: int
     bill_no: str
@@ -116,6 +141,7 @@ class BillDetail(BaseModel):
     party_breakdown: list[PartyVote]  # 정당별 찬반(의원별 기록 있을 때)
     voters: list[Voter]  # 표결 의원 → 프로필 연결(그물망)
     funnel: list[FunnelStep]
+    civic_opinion: CivicOpinion | None  # 입법예고 기간 시민 찬반(있을 때만) — 민심 vs 국회
     notice: str
 
 
@@ -132,6 +158,9 @@ class BillCard(BaseModel):
     party_split: bool  # 민주 vs 국힘 다수 입장이 갈렸는가
     pro: str | None  # AI 요약 좋은점 첫 줄(있으면)
     con: str | None  # AI 요약 문제점 첫 줄(있으면)
+    # 입법예고 시민 의견(있을 때만) — 진입 후크: "시민 N명이 의견 냈다" (기능 B-4.4)
+    opinion_total: int | None = None
+    opinion_lean: str | None = None  # 찬성/반대(우세 입장) — 분해 보류·동수면 None
 
 
 class BillFeed(BaseModel):
@@ -148,22 +177,98 @@ class CategoryList(BaseModel):
     items: list[CategoryCount]
 
 
-def _feed_filtered(q):
-    """피드 공통 필터 — 정쟁·절차성 제외 + 본회의 반대표 집계 있는 의안만."""
+OPINIONS_NOTICE = (
+    "입법예고 기간에 시민 의견이 많이 모인 법안을 의견 수 많은 순으로 보여드립니다. "
+    "표결 전(계류) 법안도 포함됩니다. 의견 수는 국민참여입법시스템 공개 집계이며, "
+    "관심 있는 시민이 자발적으로 남기는 것이라 반대 의견이 많이 모이는 경향이 있습니다."
+)
+
+ALL_NOTICE = (
+    "국회에서 표가 갈렸거나 입법예고 때 시민 의견이 많이 모인 법안을 최근 제안된 순으로 "
+    "함께 보여드립니다. 추천이 아니라 '이슈가 됐다'는 사실에 따른 선별입니다."
+)
+
+
+def _exclude_political(q):
+    """정쟁·절차성 안건 제외(피드 공통 — 중립성·일상 관련성)."""
     for kw in FEED_EXCLUDE:
         q = q.where(Bill.title.notilike(f"%{kw}%"))
-    return q.where(Vote.no_total.isnot(None))
+    return q
 
 
-@router.get("", response_model=BillFeed)
-def list_bills(
-    limit: int = 20, category: str | None = None, db: Session = Depends(get_db)
-) -> BillFeed:
-    """큐레이션 피드 — 본회의에서 의견이 갈린 정책 법안을 '논쟁' 순으로.
+def _feed_filtered(q):
+    """피드 공통 필터 — 정쟁·절차성 제외 + 본회의 반대표 집계 있는 의안만."""
+    return _exclude_political(q).where(Vote.no_total.isnot(None))
 
-    🟡 추천이 아니라 사실 기반 선별: 정쟁·절차성 제외, 반대표 많은 순 후보 →
-    정당(민주 vs 국힘) 다수 입장이 갈린 법안을 위로. AI 요약 있으면 좋은점/문제점 한 줄 동봉.
-    category(세금·노동·주거…)가 오면 해당 분야로 좁힌다.
+
+def _lean(agree: int | None, oppose: int | None) -> str | None:
+    """찬반 우세 입장 — 분해 보류(None)·동수면 None."""
+    if agree is None or oppose is None:
+        return None
+    return "반대" if oppose > agree else ("찬성" if agree > oppose else None)
+
+
+def _attach_opinions(db: Session, cards: list["BillCard"]) -> None:
+    """카드 목록에 입법예고 시민 의견 수·우세입장을 붙인다(있는 것만). 한 번의 쿼리.
+
+    진입 후크: 표결로 고른 법안 중에서도 '시민 의견이 쏟아진' 것을 카드에서 바로 드러낸다.
+    """
+    if not cards:
+        return
+    ids = [c.id for c in cards]
+    rows = db.execute(
+        select(Bill.id, LawNotice.opinion_total, LawNotice.agree_count, LawNotice.oppose_count)
+        .join(LawNotice, LawNotice.bill_no == Bill.bill_no)
+        .where(Bill.id.in_(ids), LawNotice.opinion_total.isnot(None), LawNotice.opinion_total > 0)
+    ).all()
+    m = {bid: (tot, ag, op) for bid, tot, ag, op in rows}
+    for c in cards:
+        if c.id in m:
+            tot, ag, op = m[c.id]
+            c.opinion_total = tot
+            c.opinion_lean = _lean(ag, op)
+
+
+def _opinion_cards(db: Session, limit: int, category: str | None) -> list["BillCard"]:
+    """'시민 의견 많은 순' 카드 — 입법예고 의견이 집계된 법안을 의견 수 순으로.
+
+    🟡 표결 유무와 무관(계류 법안 포함). 정쟁·절차성은 제외. 추천이 아니라 '참여 많은 순' 사실 정렬.
+    """
+    q = _exclude_political(
+        select(Bill, LawNotice).join(LawNotice, LawNotice.bill_no == Bill.bill_no)
+    ).where(LawNotice.opinion_total.isnot(None), LawNotice.opinion_total > 0)
+    if category:
+        q = q.where(Bill.category == category)
+    q = q.order_by(LawNotice.opinion_total.desc()).limit(limit)
+    rows = db.execute(q).all()
+    if not rows:
+        return []
+
+    bill_ids = [b.id for b, _ in rows]
+    votes = {
+        v.bill_id: v
+        for v in db.scalars(select(Vote).where(Vote.bill_id.in_(bill_ids))).all()
+    }
+    cards = []
+    for bill, ln in rows:
+        v = votes.get(bill.id)
+        pro = bill.summary_pros.split("\n")[0] if bill.summary_pros else None
+        con = bill.summary_cons.split("\n")[0] if bill.summary_cons else None
+        cards.append(BillCard(
+            id=bill.id, title=bill.title, committee=bill.committee, category=bill.category,
+            proposed_date=bill.proposed_date,
+            yes=(v.yes_total if v else None), no=(v.no_total if v else None),
+            contested_reason=f"의견 {ln.opinion_total:,}건", party_split=False,
+            pro=pro, con=con,
+            opinion_total=ln.opinion_total, opinion_lean=_lean(ln.agree_count, ln.oppose_count),
+        ))
+    return cards
+
+
+def _contested_cards(db: Session, limit: int, category: str | None) -> list["BillCard"]:
+    """'표결로 갈린 순' 카드 — 본회의 반대표/정당갈림 순. (기존 피드 본체)
+
+    🟡 정쟁·절차성 제외, 반대표 많은 순 후보 → 정당(민주 vs 국힘) 입장이 갈린 법안을 위로.
     """
     pool = max(limit * 4, 40)
     q = _feed_filtered(select(Bill, Vote).join(Vote, Vote.bill_id == Bill.id))
@@ -172,7 +277,7 @@ def list_bills(
     q = q.order_by(Vote.no_total.desc().nullslast()).limit(pool)
     rows = db.execute(q).all()
     if not rows:
-        return BillFeed(items=[], notice=FEED_NOTICE)
+        return []
 
     # 후보들의 정당(민주·국힘) 다수 입장 계산 → 갈림 판정(한 번의 집계 쿼리)
     vote_ids = [v.id for _, v in rows]
@@ -184,7 +289,6 @@ def list_bills(
         .where(VoteRecord.vote_id.in_(vote_ids), Party.name.in_(MAJOR_PARTIES))
         .group_by(VoteRecord.vote_id, Party.name, VoteRecord.choice)
     ).all()
-    # vote_id -> party -> {찬,반}
     tally: dict[int, dict[str, dict[str, int]]] = defaultdict(
         lambda: defaultdict(lambda: {"y": 0, "n": 0})
     )
@@ -215,9 +319,41 @@ def list_bills(
             contested_reason=reason, party_split=split, pro=pro, con=con,
         ))
 
-    # 정당 갈림 우선, 그 다음 반대표 많은 순
     cards.sort(key=lambda c: (c.party_split, c.no or 0), reverse=True)
-    return BillFeed(items=cards[:limit], notice=FEED_NOTICE)
+    top = cards[:limit]
+    _attach_opinions(db, top)  # 표결로 고른 법안에도 시민 의견 수 배지(겹치는 것만)
+    return top
+
+
+@router.get("", response_model=BillFeed)
+def list_bills(
+    limit: int = 20, category: str | None = None, sort: str | None = None,
+    db: Session = Depends(get_db),
+) -> BillFeed:
+    """법안 피드 — 이슈가 된 정책 법안. 보기(sort)에 따라 정렬·선별이 달라진다.
+
+    - 기본/`all`: 표결로 갈린 법안 + 시민 의견 쏟아진 법안을 합쳐 최신(제안일)순.
+    - `contested`: 본회의 반대표·정당갈림 순(표결 있는 법안).
+    - `opinions`: 입법예고 시민 의견 많은 순(표결 무관, 계류 포함).
+    🟡 추천이 아니라 사실 기반 선별·정렬. category(세금·노동·주거…)로 좁힐 수 있다.
+    """
+    if sort == "opinions":
+        return BillFeed(items=_opinion_cards(db, limit, category), notice=OPINIONS_NOTICE)
+    if sort == "contested":
+        return BillFeed(items=_contested_cards(db, limit, category), notice=FEED_NOTICE)
+
+    # 전체(기본): 두 축을 합쳐 최신순. 같은 법안이면 표결 카드(의견 배지 포함)를 우선 보존.
+    contested = _contested_cards(db, limit, category)
+    opinions = _opinion_cards(db, limit, category)
+    by_id: dict[int, BillCard] = {c.id: c for c in contested}
+    for c in opinions:
+        by_id.setdefault(c.id, c)
+    merged = sorted(
+        by_id.values(),
+        key=lambda c: (c.proposed_date or date.min, c.id),
+        reverse=True,
+    )
+    return BillFeed(items=merged[:limit], notice=ALL_NOTICE)
 
 
 @router.get("/categories", response_model=CategoryList)
@@ -372,6 +508,21 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         if (pros and cons) else None
     )
 
+    # 입법예고 기간 시민 찬반 의견(있고, 집계된 경우만) — 민심 vs 국회(표결/처리)를 한 페이지에서.
+    civic = None
+    notice_row = db.scalar(
+        select(LawNotice).where(
+            LawNotice.bill_no == bill.bill_no, LawNotice.opinion_total.isnot(None)
+        )
+    )
+    if notice_row is not None and (notice_row.opinion_total or 0) > 0:
+        civic = CivicOpinion(
+            total=notice_row.opinion_total,
+            agree=notice_row.agree_count, oppose=notice_row.oppose_count,
+            etc=notice_row.etc_count, pal_url=notice_row.source_url,
+            notice=CIVIC_NOTICE, method_note=CIVIC_METHOD,
+        )
+
     return BillDetail(
         id=bill.id, bill_no=bill.bill_no, title=bill.title,
         committee=bill.committee, category=bill.category, status=bill.status,
@@ -381,7 +532,7 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
         proposer=proposer, proposer_kind=bill.proposer_kind,
         proposer_text=bill.proposer_text, vote=vote_out,
         party_breakdown=party_breakdown, voters=voters, funnel=funnel,
-        notice=NOTICE,
+        civic_opinion=civic, notice=NOTICE,
     )
 
 

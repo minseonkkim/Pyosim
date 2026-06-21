@@ -12,6 +12,7 @@ import {
   fetchBillSummary,
   type BillDetail,
   type BillSummary,
+  type CivicOpinion,
   type PartyVote,
   type Voter,
 } from "@/lib/api";
@@ -246,6 +247,9 @@ export default function BillPage() {
         </>
       )}
 
+      {/* 입법예고 기간 시민 찬반 의견 — 민심 vs 국회(표결/처리)를 한 페이지에서 (기능 B-4.4) */}
+      {b.civic_opinion && <CivicOpinionSection c={b.civic_opinion} />}
+
       {/* 🟡 출처 + 중립 고지 */}
       <div className="disclaimer" style={{ marginTop: 24 }}>
         ⚖️ {b.notice}
@@ -395,6 +399,72 @@ function PartyBar({ pb }: { pb: PartyVote }) {
         <span style={{ width: `${100 - yesPct}%`, background: "var(--ink-400)" }} />
       </div>
     </div>
+  );
+}
+
+// 입법예고 기간 시민 찬반 의견 — 🟡 의견 수는 공개 집계 그대로, 본문은 담지 않음.
+// 색은 정당별 찬반과 같은 잉크 농도(진=찬성·옅=반대)로 통일 — 중립(특정 정치색 배제).
+function CivicOpinionSection({ c }: { c: CivicOpinion }) {
+  const hasSplit = c.agree != null && c.oppose != null;
+  const etc = c.etc ?? (hasSplit ? Math.max(c.total - c.agree! - c.oppose!, 0) : 0);
+  const pct = (v: number) => `${c.total ? ((v / c.total) * 100).toFixed(0) : 0}%`;
+  const lean = hasSplit
+    ? c.oppose! > c.agree! ? "반대" : c.agree! > c.oppose! ? "찬성" : null
+    : null;
+  return (
+    <section style={{ marginTop: 24 }}>
+      <h3 style={{ marginBottom: 8 }}>
+        시민 의견 <span className="chip" style={{ fontSize: 11 }}>입법예고</span>
+      </h3>
+      <div className="card" style={{ background: "var(--ink-50)" }}>
+        <div style={{ fontSize: 13.5, marginBottom: 10, wordBreak: "keep-all" }}>
+          입법예고 기간에 시민 <b>{c.total.toLocaleString()}명</b>이 의견을 남겼어요
+          {lean ? <> — <b>{lean} 의견이 더 많았어요.</b></> : "."}
+        </div>
+        {hasSplit ? (
+          <>
+            <div
+              style={{ display: "flex", height: 14, borderRadius: 999, overflow: "hidden", background: "var(--ink-100)" }}
+            >
+              <span style={{ width: pct(c.agree!), background: "var(--ink-800)" }} />
+              <span style={{ width: pct(c.oppose!), background: "var(--ink-400)" }} />
+              <span style={{ width: pct(etc), background: "var(--ink-200)" }} />
+            </div>
+            <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 12.5, flexWrap: "wrap" }}>
+              <Legend color="var(--ink-800)" label="찬성" v={c.agree!} />
+              <Legend color="var(--ink-400)" label="반대" v={c.oppose!} />
+              <Legend color="var(--ink-200)" label="기타" v={etc} />
+            </div>
+          </>
+        ) : (
+          <div className="muted" style={{ fontSize: 12.5 }}>
+            찬반 분해는 준비 중이에요 (의견이 많아 집계에 시간이 걸려요).
+          </div>
+        )}
+      </div>
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 6, wordBreak: "keep-all" }}>ℹ️ {c.method_note}</p>
+      {c.pal_url && (
+        <a
+          href={c.pal_url}
+          target="_blank"
+          rel="noreferrer"
+          className="muted"
+          style={{ fontSize: 12, display: "inline-block", marginTop: 2 }}
+        >
+          국민참여입법시스템에서 의견 보기 ↗
+        </a>
+      )}
+    </section>
+  );
+}
+
+function Legend({ color, label, v }: { color: string; label: string; v: number }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: "inline-block" }} />
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <span className="muted numeral">{v.toLocaleString()}</span>
+    </span>
   );
 }
 
