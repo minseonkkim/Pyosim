@@ -7,7 +7,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { fetchPetitions, type PetitionCard, type PetitionFeed } from "@/lib/api";
+import {
+  fetchPetitions,
+  type PetitionCard,
+  type PetitionFeed,
+  type StatusCount,
+} from "@/lib/api";
 
 const PAGE = 20; // 무한스크롤 한 번에 더 그리는 카드 수
 type Filter = "전체" | "계류" | "처리완료";
@@ -53,6 +58,11 @@ export default function PetitionsPage() {
         위원회에서 심사 중인지, 끝내 어떻게 처리됐는지 — 공식 기록 그대로.
       </p>
 
+      {/* 처리 현황 그래프 — 전체 청원의 상태 분포 한눈에 */}
+      {feed && feed.total > 0 && (
+        <StatusBar items={feed.status_breakdown} total={feed.total} />
+      )}
+
       {/* 상태 필터 칩 */}
       {feed && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
@@ -92,6 +102,66 @@ export default function PetitionsPage() {
         </div>
       )}
     </main>
+  );
+}
+
+// 처리 현황 막대 — 전체 청원의 상태 분포(계류·본회의불부의 등)를 한 줄 스택바 + 범례로.
+// 색은 잉크 농도만(중립): 계류=옅게(미결), 처리결과=진하게(종료). 🟡 사실 분포 표시.
+const STATUS_SHADES = [
+  "var(--ink-300)", // 계류(맨 앞) — 옅게
+  "var(--ink-800)",
+  "var(--ink-600)",
+  "var(--ink-500)",
+  "var(--ink-400)",
+  "var(--ink-700)",
+];
+
+function StatusBar({ items, total }: { items: StatusCount[]; total: number }) {
+  const pct = (n: number) => (n / total) * 100;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700 }}>처리 현황</span>
+        <span className="muted numeral" style={{ fontSize: 12.5 }}>전체 {total.toLocaleString()}건</span>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          height: 16,
+          borderRadius: 999,
+          overflow: "hidden",
+          background: "var(--ink-100)",
+        }}
+      >
+        {items.map((s, i) => (
+          <span
+            key={s.label}
+            title={`${s.label} ${s.count}`}
+            style={{ width: `${pct(s.count)}%`, background: STATUS_SHADES[i % STATUS_SHADES.length] }}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+        {items.map((s, i) => (
+          <span key={s.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12 }}>
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 2,
+                background: STATUS_SHADES[i % STATUS_SHADES.length],
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontWeight: 600 }}>{s.label}</span>
+            <span className="muted numeral">
+              {s.count} ({pct(s.count).toFixed(0)}%)
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

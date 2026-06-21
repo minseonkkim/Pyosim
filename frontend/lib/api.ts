@@ -299,10 +299,17 @@ export interface PetitionCard {
   days_pending: number | null;
 }
 
+export interface StatusCount {
+  label: string;
+  count: number;
+}
+
 export interface PetitionFeed {
   items: PetitionCard[];
   pending: number;
   done: number;
+  total: number;
+  status_breakdown: StatusCount[];
   notice: string;
 }
 

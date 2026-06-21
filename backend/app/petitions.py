@@ -79,10 +79,17 @@ class PetitionDetail(BaseModel):
     notice: str
 
 
+class StatusCount(BaseModel):
+    label: str  # 계류 / 본회의불부의 / 대안반영폐기 / 철회 …
+    count: int
+
+
 class PetitionFeed(BaseModel):
     items: list[PetitionCard]
     pending: int  # 계류 중 건수
     done: int  # 처리완료 건수
+    total: int  # 전체 청원 수(그래프 분모)
+    status_breakdown: list[StatusCount]  # 전체 상태 분포(필터 무관) — 막대그래프용
     notice: str
 
 
@@ -185,6 +192,20 @@ def list_petitions(
     ) or 0
     total = db.scalar(select(func.count()).select_from(Petition)) or 0
 
+    # 전체 상태 분포(필터 무관) — 그래프용. 계류(proc_result null) + 처리결과별(표기 변형 병합).
+    raw = db.execute(
+        select(Petition.proc_result, func.count()).group_by(Petition.proc_result)
+    ).all()
+    agg: dict[str, int] = {}
+    for pr, cnt in raw:
+        label = "계류" if pr is None else pr.replace(" ", "")  # "본회의 불부의" → "본회의불부의"
+        agg[label] = agg.get(label, 0) + cnt
+    # 계류를 맨 앞, 나머지는 건수 많은 순
+    ordered = sorted(
+        agg.items(), key=lambda kv: (kv[0] != "계류", -kv[1])
+    )
+    breakdown = [StatusCount(label=k, count=v) for k, v in ordered]
+
     items = [
         PetitionCard(
             id=p.id, title=p.title, committee=p.committee,
@@ -197,7 +218,8 @@ def list_petitions(
         for p in rows
     ]
     return PetitionFeed(
-        items=items, pending=pending, done=total - pending, notice=NOTICE,
+        items=items, pending=pending, done=total - pending, total=total,
+        status_breakdown=breakdown, notice=NOTICE,
     )
 
 
