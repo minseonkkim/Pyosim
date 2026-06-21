@@ -50,13 +50,29 @@ export interface QuestionResult {
   likms_url: string | null;
 }
 
+// 의원별 일치율 — 실제 본회의 표결기록(VoteRecord)이 있을 때만 채워짐. 없으면 빈 배열.
+export interface PersonMatch {
+  id: number;
+  name: string;
+  party: string | null;
+  color_hex: string | null;
+  district: string | null;
+  photo_url: string | null;
+  match_rate: number; // 0~1
+  matched: number;
+  total: number;
+}
+
 export interface ResultsResponse {
   answered: number;
   skipped: number;
   party_match: PartyMatch[];
+  person_match: PersonMatch[]; // 닮은 의원(상위)
+  person_mismatch: PersonMatch[]; // 나와 가장 다른 의원(하위)
   per_question: QuestionResult[];
   disclaimer: string;
   method_note: string;
+  person_method_note: string | null;
 }
 
 // ───────── 정치인 프로필 (Phase 1-2, 그물망 '사람' 축) ─────────

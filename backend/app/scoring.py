@@ -59,6 +59,11 @@ METHOD_NOTE = (
     "(그 정당이 표결에 참여한, 내가 '모름'이 아닌 문항 수). "
     "정당 입장은 각 법안의 본회의 표결(의안번호로 확인 가능) 집계를 따릅니다."
 )
+PERSON_METHOD_NOTE = (
+    "의원별 일치율 = (내 답과 그 의원의 실제 본회의 표결 방향이 같은 문항 수) ÷ "
+    "(그 의원이 찬성·반대로 표결한, 내가 '모름'이 아닌 문항 수). "
+    "기권·불참은 분모에서 제외합니다. 의원별 표결기록이 없는 환경에서는 표시되지 않습니다."
+)
 
 # '찬성 측'으로 매칭되는 사용자 선택. (Ⓐ=찬성 방향)
 _AGREE_WITH_YES = AnswerChoice.찬성
@@ -75,6 +80,55 @@ class PartyMatch:
     @property
     def rate(self) -> float:
         return round(self.matched / self.total, 4) if self.total else 0.0
+
+
+@dataclass
+class PersonMatch:
+    person_id: int
+    matched: int
+    total: int
+
+    @property
+    def rate(self) -> float:
+        return round(self.matched / self.total, 4) if self.total else 0.0
+
+
+def score_persons(
+    answers: dict[int, AnswerChoice],
+    person_stance_by_question: dict[int, dict[int, str]],
+    min_total: int = 1,
+) -> list[PersonMatch]:
+    """의원별 일치율 집계 — 정당과 같은 공식을, 개인 단위로.
+
+    answers: {question_id: AnswerChoice}
+    person_stance_by_question: {question_id: {person_id: "찬"|"반"}}
+        — 실제 `VoteRecord`(의원별 본회의 표결)에서만 채운다. 임의로 만들지 않는다.
+    min_total: 표본이 너무 작은 의원(예: 1문항만 표결) 제외용 최소 분모.
+    """
+    matched: Counter = Counter()
+    total: Counter = Counter()
+
+    for qid, choice in answers.items():
+        if choice == AnswerChoice.모름:
+            continue
+        stances = person_stance_by_question.get(qid)
+        if not stances:
+            continue
+        for pid, stance in stances.items():
+            total[pid] += 1
+            agree = (choice == _AGREE_WITH_YES and stance == "찬") or (
+                choice == _AGREE_WITH_NO and stance == "반"
+            )
+            if agree:
+                matched[pid] += 1
+
+    results = [
+        PersonMatch(pid, matched[pid], total[pid])
+        for pid in total
+        if total[pid] >= min_total
+    ]
+    results.sort(key=lambda m: (m.rate, m.total), reverse=True)
+    return results
 
 
 def party_stances_from_votes(db: Session, vote_id: int) -> dict[str, str]:

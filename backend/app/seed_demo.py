@@ -14,7 +14,16 @@ from datetime import date, datetime, timezone
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import Bill, CriminalRecord, Party, Person
+from app.models import (
+    Bill,
+    CriminalRecord,
+    Party,
+    Person,
+    Vote,
+    VoteChoice,
+    VoteRecord,
+)
+from app.scoring import CURATED_PARTY_STANCES
 from app.seed_questions import DRAFTS
 
 
@@ -78,6 +87,36 @@ def run() -> None:
                 if bill.proposed_date is None:
                     bill.proposed_date = date(2025, 3, 1)
 
+        # ── 가상 표결기록(데모): "나와 닮은 의원" 결과가 렌더되도록 ──
+        # 🟡 가상 인물([데모])에게만 부여한다. 실제 의원 표는 임의로 만들지 않는다(scoring.py 원칙).
+        #    각 앵커 법안의 정당 집계 입장(CURATED_PARTY_STANCES)을 따라 본회의 표결을 흉내낸다.
+        #    실데이터는 ETL(members/bills/vote_records)이 의원별 표결을 그대로 적재한다.
+        bill_by_no = {b.bill_no: b for b in bills}
+        voted_bill_ids = {v.bill_id for v in db.scalars(select(Vote)).all()}
+        n_vote = 0
+        for bill_no, stances in CURATED_PARTY_STANCES.items():
+            bill = bill_by_no.get(bill_no)
+            if bill is None or bill.id in voted_bill_ids:
+                continue
+            vote = Vote(
+                bill_id=bill.id,
+                session_date=date(2025, 3, 1),
+                last_verified=datetime.now(timezone.utc),
+            )
+            db.add(vote)
+            db.flush()
+            yes_parties, no_parties = set(stances["찬"]), set(stances["반"])
+            for person in demo_people:
+                pname = person.party.name if person.party else None
+                if pname in yes_parties:
+                    choice = VoteChoice.찬성
+                elif pname in no_parties:
+                    choice = VoteChoice.반대
+                else:
+                    continue
+                db.add(VoteRecord(vote_id=vote.id, person_id=person.id, choice=choice))
+            n_vote += 1
+
         # ── 가상 전과(데모) ──
         target = next((p for p in demo_people if p.name == "[데모] 이두리"), None)
         if target is not None and not target.criminal_records:
@@ -92,7 +131,7 @@ def run() -> None:
         db.commit()
         print(
             f"데모 시드: 법안 신규 {n_bill}/{len(DRAFTS)}, 가상 정치인 신규 {n_person}/"
-            f"{len(DEMO_PERSONS)} (멱등)"
+            f"{len(DEMO_PERSONS)}, 데모 표결 신규 {n_vote} (멱등)"
         )
     finally:
         db.close()

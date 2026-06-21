@@ -6,11 +6,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import type { ResultsResponse } from "@/lib/api";
+import type { PersonMatch, ResultsResponse } from "@/lib/api";
 import { popResult } from "@/lib/session";
 import { summarize, shareUrl } from "@/lib/share";
 import { track } from "@/lib/analytics";
 import PartyChart from "./PartyChart";
+import { Avatar, PartyDot } from "../persons/PersonBits";
 
 export default function ResultPage() {
   const [result, setResult] = useState<ResultsResponse | null | undefined>(
@@ -106,11 +107,37 @@ export default function ResultPage() {
       <h3 style={{ marginBottom: 4 }}>정당별 표결 일치율</h3>
       <PartyChart data={result.party_match} />
 
+      {/* 나와 닮은 의원 — 실제 본회의 표결기록이 있을 때만 (없으면 백엔드가 빈 배열) */}
+      {(result.person_match?.length ?? 0) > 0 && (
+        <>
+          <h3 style={{ marginTop: 24, marginBottom: 8 }}>나와 닮은 의원</h3>
+          {result.person_match.map((p) => (
+            <PersonRow key={p.id} p={p} />
+          ))}
+        </>
+      )}
+
+      {/* 나와 가장 다른 의원 — 일치율이 가장 낮은 의원(같은 양식, 판정 아님) */}
+      {(result.person_mismatch?.length ?? 0) > 0 && (
+        <>
+          <h3 style={{ marginTop: 24, marginBottom: 8 }}>나와 가장 다른 의원</h3>
+          {result.person_mismatch.map((p) => (
+            <PersonRow key={p.id} p={p} />
+          ))}
+        </>
+      )}
+
       {/* 🟡 필수 고지문 */}
       <div className="disclaimer">
         ⚖️ {result.disclaimer}
         <br />
         <span style={{ fontSize: 12 }}>※ {result.method_note}</span>
+        {result.person_method_note && (
+          <>
+            <br />
+            <span style={{ fontSize: 12 }}>※ {result.person_method_note}</span>
+          </>
+        )}
       </div>
 
       {/* 공유 */}
@@ -163,5 +190,35 @@ export default function ResultPage() {
         </Link>
       </div>
     </main>
+  );
+}
+
+// 의원 한 줄 카드 — 닮은/가장 다른 의원 공용. 모두 같은 양식(중립).
+function PersonRow({ p }: { p: PersonMatch }) {
+  return (
+    <Link
+      href={`/person/${p.id}`}
+      className="card"
+      style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}
+      onClick={() => track("source_open", { person_id: p.id })}
+    >
+      <Avatar name={p.name} photo={p.photo_url} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontWeight: 700, color: "var(--fg)" }}>{p.name}</div>
+        <div className="muted" style={{ fontSize: 13 }}>
+          <PartyDot color={p.color_hex} />
+          {p.party ?? "무소속"}
+          {p.district ? ` · ${p.district}` : ""}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div className="numeral" style={{ fontSize: 18, fontWeight: 700 }}>
+          {Math.round(p.match_rate * 100)}%
+        </div>
+        <div className="muted" style={{ fontSize: 11 }}>
+          {p.matched}/{p.total}문항
+        </div>
+      </div>
+    </Link>
   );
 }

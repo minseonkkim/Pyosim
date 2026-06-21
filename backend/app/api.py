@@ -25,15 +25,20 @@ from app.models import (
     Bill,
     Event,
     Party,
+    Person,
     Question,
     QuestionStatus,
     Vote,
+    VoteChoice,
+    VoteRecord,
 )
 from app.scoring import (
     DISCLAIMER,
     METHOD_NOTE,
+    PERSON_METHOD_NOTE,
     SCORED_PARTIES,
     score,
+    score_persons,
     stance_map_for_bill,
 )
 
@@ -100,13 +105,28 @@ class QuestionResultOut(BaseModel):
     likms_url: str | None
 
 
+class PersonMatchOut(BaseModel):
+    id: int
+    name: str
+    party: str | None
+    color_hex: str | None
+    district: str | None
+    photo_url: str | None
+    match_rate: float
+    matched: int
+    total: int
+
+
 class ResultsResponse(BaseModel):
     answered: int
     skipped: int
     party_match: list[PartyMatchOut]
+    person_match: list[PersonMatchOut] = []  # 닮은 의원(상위) — 표결기록 있을 때만
+    person_mismatch: list[PersonMatchOut] = []  # 나와 가장 다른 의원(하위)
     per_question: list[QuestionResultOut]
     disclaimer: str
     method_note: str
+    person_method_note: str | None = None
 
 
 # ───────────────────────── 헬퍼 ─────────────────────────
@@ -249,13 +269,84 @@ def compute_results(
         for m in matches
     ]
 
+    # ── 의원별 일치율 — 실제 `VoteRecord`(의원별 본회의 표결)가 있을 때만 ──
+    # 🟡 개인 표를 임의로 만들지 않는다(scoring.py 원칙). 기록이 없는 환경이면 빈 목록.
+    question_vote: dict[int, int] = {}
+    for q in questions.values():
+        if q.bill_id:
+            vid = vote_by_bill.get(q.bill_id)
+            if vid is not None:
+                question_vote[q.id] = vid
+
+    person_stance_by_question: dict[int, dict[int, str]] = {}
+    vids = set(question_vote.values())
+    if vids:
+        rows = db.execute(
+            select(VoteRecord.vote_id, VoteRecord.person_id, VoteRecord.choice).where(
+                VoteRecord.vote_id.in_(vids),
+                VoteRecord.choice.in_([VoteChoice.찬성, VoteChoice.반대]),
+            )
+        ).all()
+        records_by_vote: dict[int, list[tuple[int, VoteChoice]]] = {}
+        for vid, pid, choice in rows:
+            records_by_vote.setdefault(vid, []).append((pid, choice))
+        for qid, vid in question_vote.items():
+            recs = records_by_vote.get(vid)
+            if not recs:
+                continue
+            person_stance_by_question[qid] = {
+                pid: ("찬" if choice == VoteChoice.찬성 else "반") for pid, choice in recs
+            }
+
+    # 닮은 의원 2명(상위) + 가장 다른 의원 2명(하위). 일치도일 뿐 — 양쪽 같은 양식.
+    person_match: list[PersonMatchOut] = []
+    person_mismatch: list[PersonMatchOut] = []
+    if person_stance_by_question:
+        # 표본이 너무 작은 의원은 제외(채점 문항의 절반 이상 표결). 동률은 일치율→표본순.
+        scored = len(person_stance_by_question)
+        ranked = score_persons(
+            answers, person_stance_by_question, min_total=max(1, (scored + 1) // 2)
+        )
+        if ranked:
+            top = ranked[:2]
+            top_ids = {m.person_id for m in top}
+            # 하위는 일치율이 가장 낮은 순(= 나와 가장 다른). 상위와 겹치지 않게.
+            bottom = [m for m in reversed(ranked) if m.person_id not in top_ids][:2]
+            wanted = [m.person_id for m in top] + [m.person_id for m in bottom]
+            persons = {
+                p.id: p
+                for p in db.scalars(select(Person).where(Person.id.in_(wanted))).all()
+            }
+
+            def _to_out(m) -> PersonMatchOut | None:
+                p = persons.get(m.person_id)
+                if p is None:
+                    return None
+                return PersonMatchOut(
+                    id=p.id,
+                    name=p.name,
+                    party=p.party.name if p.party else None,
+                    color_hex=p.party.color_hex if p.party else None,
+                    district=p.district,
+                    photo_url=p.photo_url,
+                    match_rate=m.rate,
+                    matched=m.matched,
+                    total=m.total,
+                )
+
+            person_match = [o for o in (_to_out(m) for m in top) if o is not None]
+            person_mismatch = [o for o in (_to_out(m) for m in bottom) if o is not None]
+
     return ResultsResponse(
         answered=len(answers) - skipped,
         skipped=skipped,
         party_match=party_match,
+        person_match=person_match,
+        person_mismatch=person_mismatch,
         per_question=per_question,
         disclaimer=DISCLAIMER,
         method_note=METHOD_NOTE,
+        person_method_note=PERSON_METHOD_NOTE if (person_match or person_mismatch) else None,
     )
 
 
