@@ -322,6 +322,7 @@ export interface PetitionDetail {
   committee_date: string | null;
   status: string;
   proc_result: string | null;
+  proc_result_note: string | null;
   days_pending: number | null;
   referred_days: number | null;
   stall_line: string | null;

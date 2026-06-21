@@ -68,6 +68,7 @@ class PetitionDetail(BaseModel):
     committee_date: date | None
     status: str
     proc_result: str | None
+    proc_result_note: str | None  # 처리결과 코드 쉬운 풀이(처리완료일 때) — 🟡 사실 설명
     days_pending: int | None
     referred_days: int | None  # 소관위 회부 후 경과일(= '위원회에서 얼마나 멈췄나')
     stall_line: str | None  # 멈춘 단계 한 줄(예: "법사위 회부 448일째 — 위원회 미상정")
@@ -94,6 +95,24 @@ STALL_NOTE = (
     "계속 계류됩니다. 22대 임기(2028년 5월)가 끝날 때까지 처리되지 않으면 자동 폐기돼요. "
     "거부 결정이 아니라, 시간이 지나며 무산되는 경로입니다."
 )
+
+# 처리결과(공식 코드) 쉬운 풀이 — 🟡 일반인이 뜻을 알게 하는 설명일 뿐, 평가·판단은 아님.
+# 표기 변형(공백 유무) 흡수 위해 공백 제거 후 매칭.
+PROC_RESULT_NOTES = {
+    "본회의불부의": "소관 위원회가 본회의에 올리지 않기로 결정해, 표결 없이 위원회 선에서 종료됐어요.",
+    "대안반영폐기": "청원 내용이 다른 법안(대안)에 일부 반영되면서, 이 청원 자체는 폐기 처리됐어요.",
+    "임기만료폐기": "국회 임기가 끝날 때까지 처리되지 않아 자동으로 폐기됐어요.",
+    "철회": "청원인이 청원을 스스로 거둬들였어요.",
+    "채택": "위원회가 청원을 받아들여 본회의에 올렸어요(부의).",
+    "불채택": "위원회가 청원을 받아들이지 않기로 결정했어요.",
+}
+
+
+def _proc_result_note(proc_result: str | None) -> str | None:
+    """처리결과 코드의 쉬운 풀이(있을 때만). 🟡 사실 설명, 판단 없음."""
+    if not proc_result:
+        return None
+    return PROC_RESULT_NOTES.get(proc_result.replace(" ", ""))
 
 
 def _referred_days(p: Petition) -> int | None:
@@ -194,6 +213,7 @@ def get_petition(pid: int, db: Session = Depends(get_db)) -> PetitionDetail:
         objective=p.objective, content=p.content, realm=p.realm,
         committee=p.committee, proposed_date=p.proposed_date,
         committee_date=p.committee_date, status=_status(p), proc_result=p.proc_result,
+        proc_result_note=_proc_result_note(p.proc_result),
         days_pending=_days_pending(p),
         referred_days=_referred_days(p), stall_line=_stall_line(p),
         stall_note=(None if p.proc_result else STALL_NOTE),

@@ -134,6 +134,26 @@ export default function PetitionPage() {
         </div>
       )}
 
+      {/* 이렇게 끝났어요 — 처리완료 청원의 결과 + 용어 쉬운 풀이(🟡 사실 설명) */}
+      {p.proc_result && (
+        <div
+          className="card"
+          style={{ marginTop: 16, background: "var(--ink-50)", borderLeft: "3px solid var(--ink-400)" }}
+        >
+          <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6 }}>
+            🏁 이렇게 끝났어요
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, wordBreak: "keep-all" }}>
+            처리결과: {p.proc_result}
+          </div>
+          {p.proc_result_note && (
+            <div className="muted" style={{ fontSize: 13, lineHeight: 1.65, wordBreak: "keep-all" }}>
+              {p.proc_result_note}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 메타 */}
       <div className="card" style={{ marginTop: 18, fontSize: 13.5, lineHeight: 1.9, background: "var(--ink-50)" }}>
         <Row label="의안번호" value={p.bill_no} mono />
