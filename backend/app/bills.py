@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.bill_content import fetch_bill_content
@@ -183,6 +183,11 @@ OPINIONS_NOTICE = (
     "관심 있는 시민이 자발적으로 남기는 것이라 반대 의견이 많이 모이는 경향이 있습니다."
 )
 
+SEARCH_NOTICE = (
+    "큐레이션 피드(표결·의견)와 달리, 제목으로 22대 국회 의안 전체를 찾습니다. "
+    "표결 전 계류 법안도 포함되며, 최근 발의순으로 보여드립니다. 사실 일치 결과만 표시합니다."
+)
+
 def _exclude_political(q):
     """정쟁·절차성 안건 제외(피드 공통 — 중립성·일상 관련성)."""
     for kw in FEED_EXCLUDE:
@@ -334,6 +339,49 @@ def list_bills(
     if sort == "opinions":
         return BillFeed(items=_opinion_cards(db, limit, category), notice=OPINIONS_NOTICE)
     return BillFeed(items=_contested_cards(db, limit, category), notice=FEED_NOTICE)
+
+
+@router.get("/search", response_model=BillFeed)
+def search_bills(q: str, limit: int = 50, db: Session = Depends(get_db)) -> BillFeed:
+    """제목·의안번호로 22대 의안 전체를 검색 — 표결 여부와 무관(계류 포함).
+
+    피드는 '논쟁'(표결·의견)으로 큐레이션해 표결 끝난 의안만 담기지만, 특정 법안을
+    이름으로 찾을 땐 계류 중인 최근 발의안까지 닿아야 한다. 여기선 DB의 모든 Bill 을
+    제목으로 훑어 최근 발의순으로 돌려준다. 🟡 추천·판정 없이 일치 결과만.
+    """
+    term = (q or "").strip()
+    if len(term) < 2:
+        return BillFeed(items=[], notice=SEARCH_NOTICE)
+    like = f"%{term}%"
+    bills = db.scalars(
+        select(Bill)
+        .where(or_(Bill.title.ilike(like), Bill.bill_no.ilike(like)))
+        .order_by(Bill.proposed_date.desc().nullslast())
+        .limit(limit)
+    ).all()
+    if not bills:
+        return BillFeed(items=[], notice=SEARCH_NOTICE)
+
+    bill_ids = [b.id for b in bills]
+    votes = {
+        v.bill_id: v
+        for v in db.scalars(select(Vote).where(Vote.bill_id.in_(bill_ids))).all()
+    }
+    cards: list[BillCard] = []
+    for b in bills:
+        v = votes.get(b.id)
+        pro = b.summary_pros.split("\n")[0] if b.summary_pros else None
+        con = b.summary_cons.split("\n")[0] if b.summary_cons else None
+        voted = v is not None and v.no_total is not None
+        reason = "본회의 표결 완료" if voted else (b.status or "계류 중")
+        cards.append(BillCard(
+            id=b.id, title=b.title, committee=b.committee, category=b.category,
+            proposed_date=b.proposed_date,
+            yes=(v.yes_total if v else None), no=(v.no_total if v else None),
+            contested_reason=reason, party_split=False, pro=pro, con=con,
+        ))
+    _attach_opinions(db, cards)  # 검색 결과에도 시민 의견 배지(있는 것만)
+    return BillFeed(items=cards, notice=SEARCH_NOTICE)
 
 
 @router.get("/categories", response_model=CategoryList)

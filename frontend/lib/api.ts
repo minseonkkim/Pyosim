@@ -270,6 +270,13 @@ export function fetchBills(
   return getJSON<BillFeed>(`/api/bills?${p.toString()}`);
 }
 
+// 제목·의안번호로 22대 의안 전체 검색 — 표결 여부 무관(계류 포함), 최근 발의순.
+// 큐레이션 피드(fetchBills)와 달리 DB의 모든 법안에 닿는다.
+export function searchBills(q: string, limit = 50): Promise<BillFeed> {
+  const p = new URLSearchParams({ q, limit: String(limit) });
+  return getJSON<BillFeed>(`/api/bills/search?${p.toString()}`);
+}
+
 // 피드에 존재하는 생활 카테고리(세금·노동·주거…) + 건수 — 칩 필터용.
 export interface CategoryCount {
   category: string;

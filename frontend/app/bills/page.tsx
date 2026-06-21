@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import {
   fetchBills,
   fetchBillCategories,
+  searchBills,
   type BillCard,
   type CategoryCount,
 } from "@/lib/api";
@@ -42,6 +43,13 @@ function BillsFeed() {
   const [active, setActive] = useState<string | null>(null); // 선택 카테고리(없으면 전체)
   const [visible, setVisible] = useState(PAGE);
 
+  // 검색 — 큐레이션 피드(표결·의견)는 표결 끝난 법안만 담아, 계류 중인 최근 발의안은
+  // 닿지 못한다. 검색은 제목으로 22대 의안 전체를 훑는다(별도 모드).
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<BillCard[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchMode = q.trim().length >= 2;
+
   // 카테고리 칩은 한 번만 불러온다(피드 필터와 무관하게 고정).
   useEffect(() => {
     fetchBillCategories()
@@ -61,6 +69,24 @@ function BillsFeed() {
       })
       .catch((e) => setErr((e as Error).message));
   }, [active, mode]);
+
+  // 검색어가 바뀌면 300ms 디바운스 후 전체 의안을 제목으로 검색한다.
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchBills(term)
+        .then((f) => setResults(f.items))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
 
   const shown = feed?.slice(0, visible) ?? [];
   const hasMore = feed !== null && visible < feed.length;
@@ -94,6 +120,27 @@ function BillsFeed() {
           : "국회 본회의에서 표가 팽팽했거나 정당 입장이 갈린 법안이에요. 어떤 점이 좋고 무엇이 우려되는지 보고, 내 생각과 견줘보세요."}
       </p>
 
+      {/* 검색 — 큐레이션 피드에 안 잡히는 계류·최근 발의안까지 제목으로 찾기 */}
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="법안 제목 또는 의안번호 검색"
+        style={{
+          width: "100%",
+          padding: 12,
+          fontSize: 15,
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
+          background: "var(--surface)",
+          color: "var(--fg)",
+          marginBottom: 12,
+        }}
+      />
+
+      {searchMode ? (
+        <SearchResults q={q.trim()} searching={searching} results={results} />
+      ) : (
+        <>
       {/* 생활 카테고리 칩 — 내 관심 분야로 좁혀보기 */}
       {cats.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
@@ -130,7 +177,37 @@ function BillsFeed() {
           ⚖️ {notice}
         </div>
       )}
+        </>
+      )}
     </main>
+  );
+}
+
+// 검색 결과 — 큐레이션과 별개 모드. 전체 의안을 제목으로 훑은 최근 발의순 목록.
+function SearchResults({
+  q,
+  searching,
+  results,
+}: {
+  q: string;
+  searching: boolean;
+  results: BillCard[] | null;
+}) {
+  return (
+    <div>
+      {searching && results === null && <p className="muted">검색 중…</p>}
+      {results !== null && results.length === 0 && !searching && (
+        <p className="muted">‘{q}’에 해당하는 법안을 찾지 못했어요.</p>
+      )}
+      {results !== null && results.length > 0 && (
+        <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+          ‘{q}’ 검색 결과 {results.length}건 (최근 발의순)
+        </p>
+      )}
+      {(results ?? []).map((b) => (
+        <BillCardItem key={b.id} b={b} />
+      ))}
+    </div>
   );
 }
 
