@@ -194,6 +194,21 @@ def _lawnotices(args) -> None:
     print(f"lawnotices 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
+@register("petition_content")
+def _petition_content(args) -> None:
+    # 국민동의청원(petitions.assembly.go.kr) API → Petition 취지·내용·분야 (billId 매칭)
+    from jobs import petition_content
+
+    session = _build_session()
+    try:
+        stats = petition_content.run_petition_content(
+            session, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"petition_content 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
 @register("lawnotice_opinions")
 def _lawnotice_opinions(args) -> None:
     # 국민참여입법시스템(pal) 의견목록 스크랩 → LawNotice 찬반 집계 (API 아님 — client 불필요)

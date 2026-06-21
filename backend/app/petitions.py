@@ -60,6 +60,9 @@ class PetitionDetail(BaseModel):
     introducer: str | None  # 소개(국민동의청원/○○의원)
     is_national_consent: bool
     signature_count: int | None
+    objective: str | None  # 청원의 취지/목적 — 🟡 공식 원문
+    content: str | None  # 청원 내용 전문 — 🟡 공식 원문
+    realm: str | None  # 분야(교육·복지 등)
     committee: str | None
     proposed_date: date | None
     committee_date: date | None
@@ -188,6 +191,7 @@ def get_petition(pid: int, db: Session = Depends(get_db)) -> PetitionDetail:
         id=p.id, bill_no=p.bill_no, title=p.title,
         proposer=p.proposer, introducer=p.introducer,
         is_national_consent=p.is_national_consent, signature_count=p.signature_count,
+        objective=p.objective, content=p.content, realm=p.realm,
         committee=p.committee, proposed_date=p.proposed_date,
         committee_date=p.committee_date, status=_status(p), proc_result=p.proc_result,
         days_pending=_days_pending(p),

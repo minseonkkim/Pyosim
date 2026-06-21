@@ -75,6 +75,41 @@ export default function PetitionPage() {
           : `최종 처리결과: ${p.proc_result ?? "—"}`}
       </p>
 
+      {/* 청원 내용 — 국민동의청원 공식 원문(취지 + 전문). 🟡 요약·판정 없음 */}
+      {(p.objective || p.content) && (
+        <section style={{ marginBottom: 20 }}>
+          <h2 style={{ fontSize: 15, margin: "0 0 10px" }}>청원 내용</h2>
+          {p.objective && (
+            <div
+              className="card"
+              style={{ background: "var(--ink-50)", borderLeft: "3px solid var(--ink-400)", marginBottom: 8 }}
+            >
+              <span className="muted" style={{ fontSize: 11.5, fontWeight: 700 }}>청원의 취지</span>
+              <div style={{ fontSize: 14.5, lineHeight: 1.6, marginTop: 4, wordBreak: "keep-all" }}>
+                {p.objective}
+              </div>
+            </div>
+          )}
+          {p.content && (
+            <div
+              className="card"
+              style={{
+                fontSize: 14,
+                lineHeight: 1.75,
+                whiteSpace: "pre-wrap",
+                wordBreak: "keep-all",
+                background: "var(--surface)",
+              }}
+            >
+              {p.content}
+            </div>
+          )}
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+            국민동의청원 공식 게시 원문이에요.
+          </p>
+        </section>
+      )}
+
       {/* 처리 단계 타임라인 */}
       <h2 style={{ fontSize: 15, margin: "0 0 12px" }}>처리 단계</h2>
       <Timeline steps={p.stages} />

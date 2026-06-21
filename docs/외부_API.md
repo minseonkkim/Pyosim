@@ -195,6 +195,18 @@ python -m jobs.run --job bills --dry-run      # 미리보기(미기록)
 
 > 전체 271개 목록 원천: `hollobit/assembly-api-mcp` `docs/discovered-all-codes.json`(동일 키로 271/276 discovered). 위 표는 그중 로드맵 직접 관련 + 라이브 검증분만.
 
+## 국민동의청원 (petitions.assembly.go.kr) — 청원 본문 (키 불필요)
+
+> 열린국회정보 청원 API·likms 엔 **청원 본문이 없다**(메타만). 본문은 국민동의청원 사이트의
+> 공개 JSON API 에서 가져온다. 키 불필요, UA 필요.
+
+- **목록 API**: `GET https://petitions.assembly.go.kr/api/petits?sttusCode={상태}&pageIndex=&recordCountPerPage=`
+  - 상태(`sttusCode`): `CMIT_FRWRD`(위원회회부)·`PROCESS_END` 등에서 **billId 가 채워진(회부된)** 레코드가 나옴.
+  - ⚠️ `billId`/제목 단건 조회·대수 필터는 안 먹음 → 상태별 페이지를 훑어 **`billId` 로 매칭**한다.
+- **매칭 키**: 레코드 `billId`(PRC_…) == 우리 `Petition.assembly_bill_id`. 라이브 검증: 305건 중 **257건 매칭**(국민동의청원 전수; 나머지 48은 의원소개 일반청원이라 이 사이트에 없음).
+- **주요 필드**: `petitObjet`(청원 취지)·`petitCn`(청원 내용 전문)·`petitRealmNm`(분야)·`agreCo`(동의수)·`resultCodeNm`(임기만료폐기 등).
+- 적재: `python -m jobs.run --job petition_content` ([etl/jobs/petition_content.py](../etl/jobs/petition_content.py)) → `Petition.objective/content/realm`(마이그레이션 0015). 🟡 공식 원문 그대로.
+
 ## 열린재정 (openapi.openfiscaldata.go.kr) — `OFD_API_KEY`
 
 > 세금 도구(/tax) 데이터 출처. 규약·이중 인코딩은 [memory: budget-data-via-openfiscal-api] / [openfiscal.py](../etl/clients/openfiscal.py) 참고.

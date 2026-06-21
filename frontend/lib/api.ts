@@ -314,6 +314,9 @@ export interface PetitionDetail {
   introducer: string | null;
   is_national_consent: boolean;
   signature_count: number | null;
+  objective: string | null;
+  content: string | null;
+  realm: string | null;
   committee: string | null;
   proposed_date: string | null;
   committee_date: string | null;

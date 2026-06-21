@@ -292,6 +292,13 @@ class Petition(Base):
     # 예: 본회의불부의 / 대안반영폐기 / 채택 / 불채택 / 철회. 🟡 공식 코드 원문 그대로.
     proc_result: Mapped[str | None] = mapped_column(String(60))
 
+    # 청원 본문 — 국민동의청원(petitions.assembly.go.kr) API, billId(assembly_bill_id)로 매칭.
+    # 🟡 공식 공개 원문 그대로(요약·판정 없음). 일반청원(의원소개)은 이 사이트에 없어 null.
+    objective: Mapped[str | None] = mapped_column(Text)  # 청원의 취지/목적(petitObjet)
+    content: Mapped[str | None] = mapped_column(Text)  # 청원 내용 전문(petitCn)
+    realm: Mapped[str | None] = mapped_column(String(40))  # 분야(petitRealmNm)
+    content_fetched: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     # 🟡 출처·검증
     source_url: Mapped[str | None] = mapped_column(Text)  # likms billDetail 직링크
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
