@@ -3,8 +3,9 @@
 // 법안 피드 (큐레이션 홈) — 흩어진 법안 대신 '논쟁이 있던' 정책 법안만 골라 보여준다.
 // 🟡 추천이 아니라 사실 기반 선별(정쟁 제외·반대표/정당갈림 순). 탭하면 상세 그물망으로.
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import {
   fetchBills,
@@ -18,15 +19,27 @@ import {
 const FEED_LIMIT = 1000; // 사실상 전체(정쟁 제외·표결 있는 정책 법안만이라 규모 한정적)
 const PAGE = 20; // 무한스크롤 한 번에 더 그리는 카드 수
 
-type Mode = "all" | "contested" | "opinions";
+type Mode = "contested" | "opinions";
 
+// 두 축은 별개 화면이다(섞지 않음). 랜딩의 진입 문이 ?view 로 초기 보기를 정한다.
 export default function BillsFeedPage() {
+  return (
+    <Suspense fallback={<main><p className="muted">불러오는 중…</p></main>}>
+      <BillsFeed />
+    </Suspense>
+  );
+}
+
+function BillsFeed() {
+  const searchParams = useSearchParams();
+  // 보기는 진입한 문(?view)으로 고정 — 페이지 안 전환 토글 없음(랜딩에서 이미 분리).
+  const mode: Mode = searchParams.get("view") === "opinions" ? "opinions" : "contested";
+
   const [feed, setFeed] = useState<BillCard[] | null>(null);
   const [notice, setNotice] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [cats, setCats] = useState<CategoryCount[]>([]);
   const [active, setActive] = useState<string | null>(null); // 선택 카테고리(없으면 전체)
-  const [mode, setMode] = useState<Mode>("all"); // 전체 / 표결로 갈린 / 시민 의견 많은
   const [visible, setVisible] = useState(PAGE);
 
   // 카테고리 칩은 한 번만 불러온다(피드 필터와 무관하게 고정).
@@ -41,7 +54,7 @@ export default function BillsFeedPage() {
     setFeed(null);
     setErr(null);
     setVisible(PAGE);
-    fetchBills(FEED_LIMIT, active ?? undefined, mode === "all" ? undefined : mode)
+    fetchBills(FEED_LIMIT, active ?? undefined, mode)
       .then((f) => {
         setFeed(f.items);
         setNotice(f.notice);
@@ -72,18 +85,14 @@ export default function BillsFeedPage() {
 
   return (
     <main>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>의견이 갈린 법안</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 4 }}>
+        {mode === "opinions" ? "시민 의견이 쏟아진 법안" : "표결로 갈린 법안"}
+      </h1>
       <p className="muted" style={{ fontSize: 13.5, marginBottom: 12 }}>
-        국회 표결로 갈렸거나, 입법예고 때 시민 의견이 쏟아진 법안이에요. 아래에서 보기를
-        바꿔가며, 내 생각과 견줘보세요.
+        {mode === "opinions"
+          ? "입법예고 때 시민이 찬반 의견을 많이 남긴 법안이에요. 표결 전(계류)이라도, 시민이 무엇에 반응했는지 의견 수로 보여드려요."
+          : "국회 본회의에서 표가 팽팽했거나 정당 입장이 갈린 법안이에요. 어떤 점이 좋고 무엇이 우려되는지 보고, 내 생각과 견줘보세요."}
       </p>
-
-      {/* 보기 전환 — 전체 / 표결로 갈린 / 시민 의견 많은(입법예고) */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-        <ModeChip label="전체" on={mode === "all"} onClick={() => setMode("all")} />
-        <ModeChip label="⚖️ 표결로 갈린" on={mode === "contested"} onClick={() => setMode("contested")} />
-        <ModeChip label="🗣 시민 의견 많은" on={mode === "opinions"} onClick={() => setMode("opinions")} />
-      </div>
 
       {/* 생활 카테고리 칩 — 내 관심 분야로 좁혀보기 */}
       {cats.length > 0 && (
@@ -153,25 +162,6 @@ function CatChip({
   );
 }
 
-function ModeChip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="chip"
-      style={{
-        fontSize: 12.5,
-        fontWeight: on ? 700 : 500,
-        cursor: "pointer",
-        background: on ? "var(--ink-800)" : "var(--surface)",
-        color: on ? "#fff" : "var(--muted)",
-        border: on ? "none" : "1px solid var(--border)",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
 
 function BillCardItem({ b }: { b: BillCard }) {
   const hasVote = b.yes != null || b.no != null;
@@ -226,8 +216,8 @@ function BillCardItem({ b }: { b: BillCard }) {
         {b.title}
       </div>
 
-      {/* 찬반 미니 바 — 표결이 있을 때만(시민 의견 보기엔 계류 법안이 많아 표결 없음) */}
       {hasVote ? (
+        /* 찬반 미니 바 — 표결이 있을 때만 */
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
             <span style={{ fontWeight: 600 }}>찬성 {yes}</span>

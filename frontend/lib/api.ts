@@ -341,6 +341,31 @@ export function fetchPetition(id: number): Promise<PetitionDetail> {
   return getJSON<PetitionDetail>(`/api/petitions/${id}`);
 }
 
+// ───────── 민심과 다른 국회 (법안+청원 통합 불일치) ─────────
+export interface MismatchItem {
+  kind: "bill" | "petition";
+  ref_id: number;
+  href: string;
+  title: string;
+  committee: string | null;
+  category: string | null;
+  voice_count: number;
+  voice_label: string; // 반대 / 찬성 / 동의
+  voice_source: string; // 입법예고 의견 / 국민동의청원 / 청원
+  response_label: string; // 가결 / 부결 / 본회의 불부의 / 계류 …
+  response_kind: "passed" | "rejected" | "pending";
+  detail: string | null;
+}
+
+export interface MismatchFeed {
+  items: MismatchItem[];
+  notice: string;
+}
+
+export function fetchMismatch(limit = 300): Promise<MismatchFeed> {
+  return getJSON<MismatchFeed>(`/api/mismatch?limit=${limit}`);
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);

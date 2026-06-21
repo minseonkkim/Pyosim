@@ -183,12 +183,6 @@ OPINIONS_NOTICE = (
     "관심 있는 시민이 자발적으로 남기는 것이라 반대 의견이 많이 모이는 경향이 있습니다."
 )
 
-ALL_NOTICE = (
-    "국회에서 표가 갈렸거나 입법예고 때 시민 의견이 많이 모인 법안을 최근 제안된 순으로 "
-    "함께 보여드립니다. 추천이 아니라 '이슈가 됐다'는 사실에 따른 선별입니다."
-)
-
-
 def _exclude_political(q):
     """정쟁·절차성 안건 제외(피드 공통 — 중립성·일상 관련성)."""
     for kw in FEED_EXCLUDE:
@@ -330,30 +324,16 @@ def list_bills(
     limit: int = 20, category: str | None = None, sort: str | None = None,
     db: Session = Depends(get_db),
 ) -> BillFeed:
-    """법안 피드 — 이슈가 된 정책 법안. 보기(sort)에 따라 정렬·선별이 달라진다.
+    """법안 피드 — 두 축은 섞지 않고 보기(sort)별로 분리한다.
 
-    - 기본/`all`: 표결로 갈린 법안 + 시민 의견 쏟아진 법안을 합쳐 최신(제안일)순.
-    - `contested`: 본회의 반대표·정당갈림 순(표결 있는 법안).
+    - 기본/`contested`: 본회의 반대표·정당갈림 순(표결 끝난 법안).
     - `opinions`: 입법예고 시민 의견 많은 순(표결 무관, 계류 포함).
     🟡 추천이 아니라 사실 기반 선별·정렬. category(세금·노동·주거…)로 좁힐 수 있다.
+    (민심 vs 국회 불일치 통합 뷰는 별도 `GET /api/mismatch` — 법안+청원.)
     """
     if sort == "opinions":
         return BillFeed(items=_opinion_cards(db, limit, category), notice=OPINIONS_NOTICE)
-    if sort == "contested":
-        return BillFeed(items=_contested_cards(db, limit, category), notice=FEED_NOTICE)
-
-    # 전체(기본): 두 축을 합쳐 최신순. 같은 법안이면 표결 카드(의견 배지 포함)를 우선 보존.
-    contested = _contested_cards(db, limit, category)
-    opinions = _opinion_cards(db, limit, category)
-    by_id: dict[int, BillCard] = {c.id: c for c in contested}
-    for c in opinions:
-        by_id.setdefault(c.id, c)
-    merged = sorted(
-        by_id.values(),
-        key=lambda c: (c.proposed_date or date.min, c.id),
-        reverse=True,
-    )
-    return BillFeed(items=merged[:limit], notice=ALL_NOTICE)
+    return BillFeed(items=_contested_cards(db, limit, category), notice=FEED_NOTICE)
 
 
 @router.get("/categories", response_model=CategoryList)

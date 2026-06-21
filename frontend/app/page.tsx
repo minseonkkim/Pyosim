@@ -18,7 +18,19 @@ const DOORS: Door[] = [
     href: "/bills",
     emoji: "⚖️",
     title: "갈린 법안",
-    desc: "표결로 갈렸거나, 시민 의견이 쏟아진 법안",
+    desc: "본회의 표가 팽팽했거나 정당 입장이 갈린 법안",
+  },
+  {
+    href: "/bills?view=opinions",
+    emoji: "🗣",
+    title: "시민 의견",
+    desc: "입법예고에 찬반 의견이 쏟아진 법안",
+  },
+  {
+    href: "/mismatch",
+    emoji: "🔥",
+    title: "민심과 다른 국회",
+    desc: "시민이 반대·동의했는데 국회는 다르게 간 법안·청원",
   },
   {
     href: "/persons",

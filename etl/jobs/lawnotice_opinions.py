@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -27,7 +28,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from jobs.db import Bill, LawNotice
+from jobs.db import Bill, LawNotice, Vote
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Pyosim-ETL"
 OPN_BASE = "https://pal.assembly.go.kr/napal/lgsltpa/lgsltpaOpn/list.do"
@@ -41,7 +42,11 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _fetch_html(bill_id: str, *, closed: bool, page_index: int, timeout: int = 25) -> str:
+def _fetch_html(
+    bill_id: str, *, closed: bool, page_index: int, timeout: int = 25, retries: int = 4
+) -> str:
+    """의견목록 한 페이지 HTML. pal 서버는 큰 의안 페이징 중 간헐적 502/일시 오류를 내므로
+    지수 백오프로 재시도(이 재시도가 없으면 한 페이지 실패가 의안 전체 스크랩을 날린다)."""
     params = {
         "lgsltPaId": bill_id,
         "searchConClosed": "1" if closed else "0",
@@ -51,8 +56,19 @@ def _fetch_html(bill_id: str, *, closed: bool, page_index: int, timeout: int = 2
     }
     url = f"{OPN_BASE}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8", "replace")
+    last: Exception | None = None
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code not in (500, 502, 503, 504):
+                raise
+        except (urllib.error.URLError, TimeoutError) as e:  # noqa: PERF203
+            last = e
+        time.sleep(0.6 * (attempt + 1))  # 0.6 → 1.2 → 1.8 …
+    raise last if last else RuntimeError("fetch 실패")
 
 
 def _parse_total(html: str) -> int | None:
@@ -95,18 +111,29 @@ def _scrape_one(
 
 def run_lawnotice_opinions(
     session: Session, *, dry_run: bool = False, limit: int | None = None,
-    only_missing: bool = True, only_linked: bool = True, sleep_sec: float = 0.3,
+    only_missing: bool = True, only_linked: bool = True, voted_only: bool = False,
+    sleep_sec: float = 0.3,
 ) -> dict:
     """입법예고 찬반 의견을 스크랩해 LawNotice 집계 컬럼을 채움(멱등).
 
     only_linked: 우리 DB 의 Bill 과 연결된(=화면에 노출될) 예고만(17,709개 전부 X).
     only_missing: opinion_fetched 없는 예고만(재실행 시 건너뜀). limit: 수집 의안 상한.
+    voted_only: 본회의 표결까지 끝난 법안의 예고만 — '민심 vs 표결' 불일치를 채우는 우선 배치.
     """
     bill_ids = {b.assembly_bill_id for b in session.scalars(select(Bill)).all() if b.assembly_bill_id}
+    voted_bill_nos: set[str] = set()
+    if voted_only:
+        voted_bill_nos = {
+            bn for (bn,) in session.execute(
+                select(Bill.bill_no).join(Vote, Vote.bill_id == Bill.id).distinct()
+            ).all()
+        }
 
     q = select(LawNotice).where(LawNotice.assembly_bill_id.isnot(None))
     if only_missing:
         q = q.where(LawNotice.opinion_fetched.is_(None))
+    if voted_only:
+        q = q.where(LawNotice.bill_no.in_(voted_bill_nos or {"__none__"}))
     q = q.order_by(LawNotice.notice_end_date.desc().nullslast(), LawNotice.id.desc())
     notices = list(session.scalars(q).all())
     if only_linked:
