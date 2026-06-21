@@ -320,6 +320,9 @@ export interface PetitionDetail {
   status: string;
   proc_result: string | null;
   days_pending: number | null;
+  referred_days: number | null;
+  stall_line: string | null;
+  stall_note: string | null;
   stages: PetitionStage[];
   likms_url: string | null;
   last_verified: string | null;

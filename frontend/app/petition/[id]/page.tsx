@@ -79,6 +79,26 @@ export default function PetitionPage() {
       <h2 style={{ fontSize: 15, margin: "0 0 12px" }}>처리 단계</h2>
       <Timeline steps={p.stages} />
 
+      {/* 왜 멈춰 있나 — 계류 청원의 멈춘 지점(사실) + 구조적 이유(🟡 분노가 아닌 이해) */}
+      {p.stall_note && (
+        <div
+          className="card"
+          style={{ marginTop: 16, background: "var(--ink-50)", borderLeft: "3px solid var(--ink-400)" }}
+        >
+          <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6 }}>
+            ⏳ 왜 멈춰 있나
+          </div>
+          {p.stall_line && (
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, wordBreak: "keep-all" }}>
+              {p.stall_line}
+            </div>
+          )}
+          <div className="muted" style={{ fontSize: 13, lineHeight: 1.65, wordBreak: "keep-all" }}>
+            {p.stall_note}
+          </div>
+        </div>
+      )}
+
       {/* 메타 */}
       <div className="card" style={{ marginTop: 18, fontSize: 13.5, lineHeight: 1.9, background: "var(--ink-50)" }}>
         <Row label="의안번호" value={p.bill_no} mono />

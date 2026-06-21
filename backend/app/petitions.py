@@ -66,6 +66,9 @@ class PetitionDetail(BaseModel):
     status: str
     proc_result: str | None
     days_pending: int | None
+    referred_days: int | None  # 소관위 회부 후 경과일(= '위원회에서 얼마나 멈췄나')
+    stall_line: str | None  # 멈춘 단계 한 줄(예: "법사위 회부 448일째 — 위원회 미상정")
+    stall_note: str | None  # 왜 계류되는지 구조적 설명(계류일 때만) — 🟡 분노가 아닌 이해
     stages: list[PetitionStage]  # 접수→회부→처리 타임라인
     likms_url: str | None
     last_verified: datetime | None
@@ -81,6 +84,31 @@ class PetitionFeed(BaseModel):
 
 def _status(p: Petition) -> str:
     return "처리완료" if p.proc_result else "계류"
+
+
+STALL_NOTE = (
+    "국회 청원은 법안과 달리 처리 시한이 없어서, 소관 위원회가 안건으로 상정하지 않으면 "
+    "계속 계류됩니다. 22대 임기(2028년 5월)가 끝날 때까지 처리되지 않으면 자동 폐기돼요. "
+    "거부 결정이 아니라, 시간이 지나며 무산되는 경로입니다."
+)
+
+
+def _referred_days(p: Petition) -> int | None:
+    """소관위 회부 후 경과일 — 계류 청원이 '위원회 심사 단계에서' 얼마나 멈췄나(사실)."""
+    if p.proc_result or p.committee_date is None:
+        return None
+    return (date.today() - p.committee_date).days
+
+
+def _stall_line(p: Petition) -> str | None:
+    """멈춘 지점 한 줄 — 🟡 사실만(회부 N일째·미상정 / 회부 전). 계류일 때만."""
+    if p.proc_result:
+        return None
+    rd = _referred_days(p)
+    if rd is not None:
+        cmte = p.committee or "소관 위원회"
+        return f"{cmte} 회부 {rd}일째 — 아직 위원회 심사에 상정되지 않았어요."
+    return "접수됐지만 아직 소관 위원회 회부 전이에요."
 
 
 def _days_pending(p: Petition) -> int | None:
@@ -162,6 +190,9 @@ def get_petition(pid: int, db: Session = Depends(get_db)) -> PetitionDetail:
         is_national_consent=p.is_national_consent, signature_count=p.signature_count,
         committee=p.committee, proposed_date=p.proposed_date,
         committee_date=p.committee_date, status=_status(p), proc_result=p.proc_result,
-        days_pending=_days_pending(p), stages=_stages(p),
+        days_pending=_days_pending(p),
+        referred_days=_referred_days(p), stall_line=_stall_line(p),
+        stall_note=(None if p.proc_result else STALL_NOTE),
+        stages=_stages(p),
         likms_url=p.source_url, last_verified=p.last_verified, notice=NOTICE,
     )
