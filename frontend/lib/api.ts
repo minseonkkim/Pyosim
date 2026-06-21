@@ -380,6 +380,91 @@ export function fetchMismatch(limit = 300): Promise<MismatchFeed> {
   return getJSON<MismatchFeed>(`/api/mismatch?limit=${limit}`);
 }
 
+// ───────── 감시견 알림 (Phase 2, 리텐션) ─────────
+// 익명 세션 기반 '변화 알림 받은함'. 청원·법안·의원을 구독하면 진행 변화를 pull 로 받는다.
+export type WatchKind = "petition" | "bill" | "person";
+
+export interface WatchItem {
+  kind: WatchKind;
+  ref_id: number;
+  title: string;
+  href: string;
+  changes: string[]; // 변화 알림 문구(사실만) — 있으면 '안 읽음'
+  has_update: boolean;
+  created_at: string;
+}
+
+export interface WatchFeed {
+  items: WatchItem[];
+  unread: number; // 변화가 있는 구독 수(뱃지)
+  total: number;
+  notice: string;
+}
+
+async function postJSON<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
+export function watchSubscribe(
+  sessionId: string,
+  kind: WatchKind,
+  refId: number,
+): Promise<{ subscribed: boolean }> {
+  return postJSON(`/api/watch/subscribe`, {
+    session_id: sessionId,
+    kind,
+    ref_id: refId,
+  });
+}
+
+export function watchUnsubscribe(
+  sessionId: string,
+  kind: WatchKind,
+  refId: number,
+): Promise<{ subscribed: boolean }> {
+  return postJSON(`/api/watch/unsubscribe`, {
+    session_id: sessionId,
+    kind,
+    ref_id: refId,
+  });
+}
+
+export function watchCheck(
+  sessionId: string,
+  kind: WatchKind,
+  refId: number,
+): Promise<{ subscribed: boolean }> {
+  const p = new URLSearchParams({
+    session_id: sessionId,
+    kind,
+    ref_id: String(refId),
+  });
+  return getJSON<{ subscribed: boolean }>(`/api/watch/check?${p.toString()}`);
+}
+
+export function fetchWatch(sessionId: string): Promise<WatchFeed> {
+  return getJSON<WatchFeed>(
+    `/api/watch?session_id=${encodeURIComponent(sessionId)}`,
+  );
+}
+
+export function watchSeen(
+  sessionId: string,
+  target?: { kind: WatchKind; refId: number },
+): Promise<{ updated: number }> {
+  return postJSON(`/api/watch/seen`, {
+    session_id: sessionId,
+    kind: target?.kind ?? null,
+    ref_id: target?.refId ?? null,
+  });
+}
+
 // 프로토타입: 승인 문항이 아직 없으므로 preview=1(초안 포함). 공개 전 외부 검토 필요.
 export function fetchQuestions(preview = true): Promise<QuestionsResponse> {
   return getJSON<QuestionsResponse>(`/api/questions?preview=${preview ? 1 : 0}`);

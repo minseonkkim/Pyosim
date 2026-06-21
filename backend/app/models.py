@@ -341,6 +341,37 @@ class LawNotice(Base):
     last_verified: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+# ───────────────────────── 감시견 알림 (Phase 2) ─────────────────────────
+class Subscription(Base):
+    """익명 세션의 '감시' 구독 — 청원·법안·의원의 진행 변화를 추적 (Phase 2 리텐션 핵심).
+
+    기획 4: "감시견 알림" — 시민이 관심 대상을 구독하면 진행이 바뀔 때 알린다.
+    이 앱은 계정·이메일·푸시 등록이 없는 익명 세션(localStorage UUID)이라,
+    OS 푸시가 아니라 **앱 내 '변화 알림' 받은함**(재방문 시 pull)으로 전달한다.
+
+    동작(스냅샷 diff): 구독 시 대상의 '상태 서명'(snapshot)을 저장하고,
+    `GET /api/watch` 가 현재 상태를 다시 계산해 비교 → 바뀐 것만 알림으로 준다.
+    사용자가 확인하면 snapshot 을 현재로 갱신(읽음 처리).
+
+    🟡 사실만: 알림 문구는 단계 이동·경과일 같은 공식 사실만(판정·평가 없음).
+       세션ID 외 개인정보는 저장하지 않는다(Event 와 동일 원칙).
+    """
+    __tablename__ = "subscription"
+    __table_args__ = (
+        UniqueConstraint("session_id", "kind", "ref_id", name="uq_subscription_target"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)  # 익명 세션
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # petition / bill / person
+    ref_id: Mapped[int] = mapped_column(Integer, nullable=False)  # 대상의 id
+
+    # 마지막으로 사용자가 본 상태의 서명(state signature). diff 의 기준선.
+    snapshot: Mapped[str | None] = mapped_column(Text)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # snapshot 갱신 시각
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # ───────────────────────── 테스트 (문항·답변) ─────────────────────────
 class Issue(Base):
     __tablename__ = "issue"

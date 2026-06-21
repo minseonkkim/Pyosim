@@ -248,6 +248,55 @@ def main() -> int:
     print("\n── 404 (없는 청원) ──")
     assert client.get("/api/petitions/999999").status_code == 404
 
+    # ── 감시견 알림 (Phase 2) ──
+    print("\n── 감시 구독/변화 알림 ──")
+    sid = "verify-watch"
+    pet_pending_id = pet["items"][0]["id"]  # 데모 계류 청원(proc_result None)
+    # 구독: 청원·법안·의원 각 1건
+    for kind, ref in [("petition", pet_pending_id), ("bill", bid), ("person", pid)]:
+        rr = client.post("/api/watch/subscribe", json={"session_id": sid, "kind": kind, "ref_id": ref})
+        assert rr.status_code == 200 and rr.json()["subscribed"] is True, rr.text
+    # 잘못된 종류/없는 대상
+    assert client.post("/api/watch/subscribe", json={"session_id": sid, "kind": "bad", "ref_id": 1}).status_code == 400
+    assert client.post("/api/watch/subscribe", json={"session_id": sid, "kind": "bill", "ref_id": 999999}).status_code == 404
+    # check 초기값
+    chk = client.get("/api/watch/check", params={"session_id": sid, "kind": "petition", "ref_id": pet_pending_id})
+    assert chk.json()["subscribed"] is True, chk.text
+
+    print("\n── GET /api/watch (변화 없음) ──")
+    r = client.get("/api/watch", params={"session_id": sid})
+    feed = r.json()
+    print(f"  구독 {feed['total']}건 · 안읽음 {feed['unread']} (변화 전이라 0 기대)")
+    assert feed["total"] == 3 and feed["unread"] == 0, feed
+
+    # 상태 변화 시뮬레이션: 계류 청원이 '채택'으로 처리됨 → diff 가 잡아야 함
+    with SessionLocal() as s:
+        p = s.get(Petition, pet_pending_id)
+        p.proc_result = "채택"
+        s.commit()
+
+    print("\n── GET /api/watch (변화 발생) ──")
+    r = client.get("/api/watch", params={"session_id": sid})
+    feed = r.json()
+    top = feed["items"][0]
+    print(f"  안읽음 {feed['unread']} · 최상단 변화: {top['changes']}")
+    assert feed["unread"] == 1, feed
+    assert top["has_update"] and top["kind"] == "petition", top  # 변화 항목이 위로
+    assert any("채택" in c for c in top["changes"]), top
+
+    print("\n── POST /api/watch/seen (읽음 처리) ──")
+    r = client.post("/api/watch/seen", json={"session_id": sid})
+    assert r.json()["updated"] == 3, r.text
+    feed = client.get("/api/watch", params={"session_id": sid}).json()
+    print(f"  읽음 후 안읽음 {feed['unread']} (0 기대)")
+    assert feed["unread"] == 0, feed
+
+    print("\n── POST /api/watch/unsubscribe (해제) ──")
+    r = client.post("/api/watch/unsubscribe", json={"session_id": sid, "kind": "petition", "ref_id": pet_pending_id})
+    assert r.json()["subscribed"] is False, r.text
+    feed = client.get("/api/watch", params={"session_id": sid}).json()
+    assert feed["total"] == 2, feed
+
     print("\n✅ API end-to-end 검증 통과")
     return 0
 

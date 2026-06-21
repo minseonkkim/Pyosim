@@ -8,6 +8,7 @@ from app.config import settings
 from app.mismatch import router as mismatch_router
 from app.persons import router as persons_router
 from app.petitions import router as petitions_router
+from app.watch import router as watch_router
 
 app = FastAPI(title="표심 · Pyosim API", version="0.1.0")
 
@@ -24,6 +25,7 @@ app.include_router(persons_router)
 app.include_router(bills_router)
 app.include_router(petitions_router)
 app.include_router(mismatch_router)
+app.include_router(watch_router)
 
 
 @app.get("/health")

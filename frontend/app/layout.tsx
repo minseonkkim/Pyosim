@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import WatchBell from "./WatchBell";
 // Pretendard (가변 폰트 + 다이내믹 서브셋) — 디자인 시스템 기본 서체
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
@@ -26,6 +27,7 @@ export default function RootLayout({
           <Link href="/" className="wordmark">
             표심
           </Link>
+          <WatchBell />
         </header>
         {children}
       </body>

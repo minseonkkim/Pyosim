@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import { fetchPerson, type PersonProfile } from "@/lib/api";
 import { Avatar, PartyDot } from "../../persons/PersonBits";
+import WatchButton from "@/app/WatchButton";
 
 // 타임라인용 날짜 표기: "2024-06-15" → "2024.06.15" (없으면 "날짜 미상")
 function fmtTimelineDate(d: string | null): string {
@@ -56,9 +57,12 @@ export default function PersonPage() {
 
   return (
     <main>
-      <Link href="/persons" className="muted" style={{ fontSize: 13 }}>
-        ← 국회의원
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <Link href="/persons" className="muted" style={{ fontSize: 13 }}>
+          ← 국회의원
+        </Link>
+        <WatchButton kind="person" refId={id} />
+      </div>
 
       {/* 헤더 */}
       <div style={{ display: "flex", gap: 14, alignItems: "center", margin: "12px 0 4px" }}>

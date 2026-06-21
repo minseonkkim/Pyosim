@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 import { fetchPetition, type PetitionDetail } from "@/lib/api";
+import WatchButton from "@/app/WatchButton";
 
 export default function PetitionPage() {
   const params = useParams<{ id: string }>();
@@ -32,9 +33,12 @@ export default function PetitionPage() {
   const pending = p.status === "계류";
   return (
     <main>
-      <Link href="/petitions" className="muted" style={{ fontSize: 13, textDecoration: "none" }}>
-        ← 청원 목록
-      </Link>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <Link href="/petitions" className="muted" style={{ fontSize: 13, textDecoration: "none" }}>
+          ← 청원 목록
+        </Link>
+        <WatchButton kind="petition" refId={id} />
+      </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0 8px" }}>
         {p.is_national_consent && (

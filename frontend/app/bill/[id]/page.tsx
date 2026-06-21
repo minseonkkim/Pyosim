@@ -17,6 +17,7 @@ import {
   type Voter,
 } from "@/lib/api";
 import { PartyDot } from "../../persons/PersonBits";
+import WatchButton from "@/app/WatchButton";
 
 const CHOICES: Voter["choice"][] = ["찬성", "반대", "기권", "불참"];
 
@@ -88,7 +89,10 @@ export default function BillPage() {
 
   return (
     <main>
-      <span className="chip" style={{ marginBottom: 4 }}>의안 {b.bill_no}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+        <span className="chip">의안 {b.bill_no}</span>
+        <WatchButton kind="bill" refId={b.id} />
+      </div>
       <h1 style={{ fontSize: 22, lineHeight: 1.35, margin: "6px 0 8px" }}>{b.title}</h1>
       <p className="muted" style={{ fontSize: 13.5 }}>
         {[b.committee, b.proposed_date ? `제안 ${b.proposed_date}` : null, b.status]
