@@ -1,0 +1,17 @@
+# gcloud builds submit 업로드 제외 (ETL 이미지 빌드 = backend + etl 만 필요)
+.git/
+**/node_modules/
+**/.next/
+**/out/
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+.env
+.env.*
+!.env.example
+*.log
+*.sqlite
+*.sqlite3
+frontend/
+docs/

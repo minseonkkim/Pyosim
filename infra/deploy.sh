@@ -105,7 +105,7 @@ migrate() {
     gcloud run jobs delete pyosim-migrate --region "$REGION" --quiet || true
   gcloud run jobs create pyosim-migrate \
     --image "$API_IMAGE" --region "$REGION" \
-    --add-cloudsql-instances "$CONN_NAME" \
+    --set-cloudsql-instances "$CONN_NAME" \
     --set-secrets "DATABASE_URL=database-url:latest" \
     --command sh \
     --args="-c,alembic upgrade head && python -m app.seed"
@@ -149,7 +149,7 @@ YAML
     gcloud run jobs delete pyosim-daily --region "$REGION" --quiet || true
   gcloud run jobs create pyosim-daily \
     --image "$ETL_IMAGE" --region "$REGION" \
-    --add-cloudsql-instances "$CONN_NAME" \
+    --set-cloudsql-instances "$CONN_NAME" \
     --set-secrets "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest,GEMINI_API_KEY=gemini-key:latest" \
     --set-env-vars "SUMMARY_PROVIDER=gemini" \
     --task-timeout 3600 --max-retries 1

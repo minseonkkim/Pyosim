@@ -1,0 +1,10 @@
+# gcloud builds submit 업로드 제외 (이미지 빌드는 npm ci 로 의존성 새로 설치)
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+*.local
+*.tsbuildinfo
+.eslintcache
