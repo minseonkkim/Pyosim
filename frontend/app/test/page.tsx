@@ -12,6 +12,7 @@ import {
   type Choice,
   type Question,
 } from "@/lib/api";
+import Loading from "@/app/Loading";
 import {
   getSessionId,
   loadAnswers,
@@ -75,11 +76,7 @@ export default function TestPage() {
   }
 
   if (!questions) {
-    return (
-      <main>
-        <p className="muted">문항을 불러오는 중…</p>
-      </main>
-    );
+    return <Loading text="문항을 불러오는 중…" />;
   }
 
   const total = questions.length;

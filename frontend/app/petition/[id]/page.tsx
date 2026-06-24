@@ -9,6 +9,7 @@ import Link from "next/link";
 
 import { fetchPetition, type PetitionDetail } from "@/lib/api";
 import WatchButton from "@/app/WatchButton";
+import Loading from "@/app/Loading";
 
 export default function PetitionPage() {
   const params = useParams<{ id: string }>();
@@ -27,7 +28,7 @@ export default function PetitionPage() {
   }, [id]);
 
   if (err) return <main><p className="disclaimer">⚠️ {err}</p></main>;
-  if (p === undefined) return <main><p className="muted">불러오는 중…</p></main>;
+  if (p === undefined) return <Loading />;
   if (p === null) return <main><p className="muted">청원을 찾을 수 없어요.</p></main>;
 
   const pending = p.status === "계류";

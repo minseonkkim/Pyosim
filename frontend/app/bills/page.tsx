@@ -14,6 +14,7 @@ import {
   type BillCard,
   type CategoryCount,
 } from "@/lib/api";
+import Loading from "@/app/Loading";
 
 // 큐레이션 피드는 재랭킹(정당 갈림→반대표 순) 때문에 offset 페이지네이션이 불안정하다.
 // 그래서 한정적인 전체 피드를 한 번에 받아 스크롤에 따라 점진 렌더링한다(국회의원 목록과 동일).
@@ -25,7 +26,7 @@ type Mode = "contested" | "opinions";
 // 두 축은 별개 화면이다(섞지 않음). 랜딩의 진입 문이 ?view 로 초기 보기를 정한다.
 export default function BillsFeedPage() {
   return (
-    <Suspense fallback={<main><p className="muted">불러오는 중…</p></main>}>
+    <Suspense fallback={<Loading />}>
       <BillsFeed />
     </Suspense>
   );
@@ -157,7 +158,7 @@ function BillsFeed() {
       )}
 
       {err && <p className="disclaimer">⚠️ 불러오지 못했어요: {err}</p>}
-      {feed === null && !err && <p className="muted">불러오는 중…</p>}
+      {feed === null && !err && <Loading inline />}
       {feed !== null && feed.length === 0 && (
         <p className="muted">이 분야엔 아직 보여줄 법안이 없어요.</p>
       )}

@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { PartyDot } from "../../persons/PersonBits";
 import WatchButton from "@/app/WatchButton";
+import Loading from "@/app/Loading";
 
 const CHOICES: Voter["choice"][] = ["찬성", "반대", "기권", "불참"];
 
@@ -69,11 +70,7 @@ export default function BillPage() {
   }, [b]);
 
   if (b === undefined && !err) {
-    return (
-      <main>
-        <p className="muted">불러오는 중…</p>
-      </main>
-    );
+    return <Loading />;
   }
   if (b === null || err) {
     return (

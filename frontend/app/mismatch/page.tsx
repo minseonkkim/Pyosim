@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { fetchMismatch, type MismatchItem, type MismatchFeed } from "@/lib/api";
+import Loading from "@/app/Loading";
 
 const PAGE = 20;
 
@@ -49,7 +50,7 @@ export default function MismatchPage() {
       </p>
 
       {err && <p className="disclaimer">⚠️ 불러오지 못했어요: {err}</p>}
-      {feed === null && !err && <p className="muted">불러오는 중…</p>}
+      {feed === null && !err && <Loading inline />}
       {feed !== null && feed.items.length === 0 && (
         <p className="muted">아직 보여줄 사안이 없어요.</p>
       )}

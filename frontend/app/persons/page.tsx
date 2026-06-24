@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { fetchPersons, type PersonListItem } from "@/lib/api";
 import { Avatar, PartyDot } from "./PersonBits";
+import Loading from "@/app/Loading";
 
 const PAGE = 30; // 무한스크롤 한 번에 더 그리는 카드 수
 
@@ -102,7 +103,7 @@ export default function PersonsPage() {
       )}
 
       {err && <p className="disclaimer">⚠️ 불러오지 못했어요: {err}</p>}
-      {persons === null && !err && <p className="muted">불러오는 중…</p>}
+      {persons === null && !err && <Loading inline />}
       {persons !== null && filtered.length === 0 && (
         <p className="muted">조건에 맞는 의원이 없어요.</p>
       )}

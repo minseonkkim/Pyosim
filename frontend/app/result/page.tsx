@@ -10,6 +10,7 @@ import type { PersonMatch, ResultsResponse } from "@/lib/api";
 import { popResult } from "@/lib/session";
 import { summarize, shareUrl } from "@/lib/share";
 import { track } from "@/lib/analytics";
+import Loading from "@/app/Loading";
 import PartyChart from "./PartyChart";
 import { Avatar, PartyDot } from "../persons/PersonBits";
 
@@ -31,11 +32,7 @@ export default function ResultPage() {
   );
 
   if (result === undefined) {
-    return (
-      <main>
-        <p className="muted">결과를 불러오는 중…</p>
-      </main>
-    );
+    return <Loading text="결과를 불러오는 중…" />;
   }
 
   if (result === null) {

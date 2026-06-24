@@ -13,6 +13,7 @@ import {
   type PetitionFeed,
   type StatusCount,
 } from "@/lib/api";
+import Loading from "@/app/Loading";
 
 const PAGE = 20; // 무한스크롤 한 번에 더 그리는 카드 수
 type Filter = "전체" | "계류" | "처리완료";
@@ -81,7 +82,7 @@ export default function PetitionsPage() {
       )}
 
       {err && <p className="disclaimer">⚠️ 불러오지 못했어요: {err}</p>}
-      {feed === null && !err && <p className="muted">불러오는 중…</p>}
+      {feed === null && !err && <Loading inline />}
       {feed !== null && feed.items.length === 0 && (
         <p className="muted">여기에 보여줄 청원이 아직 없어요.</p>
       )}

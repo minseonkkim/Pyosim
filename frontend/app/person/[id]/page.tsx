@@ -10,6 +10,7 @@ import Link from "next/link";
 import { fetchPerson, type PersonProfile } from "@/lib/api";
 import { Avatar, PartyDot } from "../../persons/PersonBits";
 import WatchButton from "@/app/WatchButton";
+import Loading from "@/app/Loading";
 
 // 타임라인용 날짜 표기: "2024-06-15" → "2024.06.15" (없으면 "날짜 미상")
 function fmtTimelineDate(d: string | null): string {
@@ -34,11 +35,7 @@ export default function PersonPage() {
   }, [id]);
 
   if (p === undefined && !err) {
-    return (
-      <main>
-        <p className="muted">불러오는 중…</p>
-      </main>
-    );
+    return <Loading />;
   }
   if (p === null || err) {
     return (

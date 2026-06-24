@@ -15,6 +15,7 @@ import {
   type WatchFeed,
   type WatchItem,
 } from "@/lib/api";
+import Loading from "@/app/Loading";
 
 const KIND_LABEL: Record<WatchItem["kind"], string> = {
   petition: "청원",
@@ -58,11 +59,7 @@ export default function WatchPage() {
     );
   }
   if (feed === null) {
-    return (
-      <main>
-        <p className="muted">불러오는 중…</p>
-      </main>
-    );
+    return <Loading />;
   }
 
   return (
