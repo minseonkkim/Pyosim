@@ -303,6 +303,56 @@ export function fetchBillCategories(): Promise<{ items: CategoryCount[] }> {
   return getJSON<{ items: CategoryCount[] }>(`/api/bills/categories`);
 }
 
+// ───────── 예산 분야 → 위원회 → 법안·의원 그물망 (기획서 4.6) ─────────
+// /tax 도넛에서 분야를 누르면, 그 분야를 심의·감독하는 상임위원회와 소관 법안·소속 의원으로 잇는다.
+export interface NetworkCommittee {
+  name: string;
+  type_name: string | null; // 상임위원회/상설특별위원회
+  member_count: number;
+}
+
+export interface NetworkBill {
+  id: number;
+  title: string;
+  committee: string | null;
+  category: string | null;
+  proposed_date: string | null;
+  status: string | null;
+}
+
+export interface NetworkMember {
+  id: number;
+  name: string;
+  party: PartyBrief | null;
+  district: string | null;
+  photo_url: string | null;
+  role: string | null; // 위원장/간사/위원
+}
+
+export interface BudgetNetwork {
+  field_code: string;
+  field_name: string;
+  committees: NetworkCommittee[];
+  bills: NetworkBill[];
+  bill_total: number;
+  members: NetworkMember[];
+  member_total: number;
+  notice: string;
+}
+
+export function fetchBudgetNetwork(
+  fieldCode: string,
+  opts: { billLimit?: number; memberLimit?: number } = {},
+): Promise<BudgetNetwork> {
+  const p = new URLSearchParams();
+  if (opts.billLimit) p.set("bill_limit", String(opts.billLimit));
+  if (opts.memberLimit) p.set("member_limit", String(opts.memberLimit));
+  const qs = p.toString();
+  return getJSON<BudgetNetwork>(
+    `/api/budget/${fieldCode}/network${qs ? `?${qs}` : ""}`,
+  );
+}
+
 // ───────── 청원 추적 (Phase 2 기능 A, 민심 레이어) ─────────
 export interface PetitionStage {
   label: string;
