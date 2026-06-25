@@ -72,6 +72,11 @@ run_job pyosim-petition-content "$ETL_IMAGE" \
   "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
   python -m jobs.run --job petition_content
 
+# 6) 의원 사진 — ETL 이미지 (ALLNAMEMBER NAAS_PIC). photo_url 이 비면 의원 카드/프로필 사진이 안 뜬다.
+run_job pyosim-photos "$ETL_IMAGE" \
+  "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
+  python -m jobs.run --job photos
+
 echo "✅ 완료. 확인:"
 echo "  curl -s '${API_IMAGE%%/api*}'  # (아래 API URL로)"
 echo "  curl -s -A Mozilla https://pyosim-api-785567251954.asia-northeast3.run.app/api/questions?preview=true"
