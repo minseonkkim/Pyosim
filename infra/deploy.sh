@@ -119,7 +119,7 @@ frontend() {
   cat >"$cfg" <<YAML
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build","-t","$WEB_IMAGE","--build-arg","NEXT_PUBLIC_API_BASE=$API_URL","."]
+    args: ["build","-t","$WEB_IMAGE","--build-arg","NEXT_PUBLIC_API_BASE=$API_URL","--build-arg","NEXT_PUBLIC_GA_ID=${GA_ID:-G-H39S9GR8PY}","."]
 images: ["$WEB_IMAGE"]
 YAML
   gcloud builds submit "$REPO_ROOT/frontend" --config "$cfg"

@@ -13,6 +13,7 @@ env:
   REGION: asia-northeast3
   AR: asia-northeast3-docker.pkg.dev/project-01308378-97ce-4b8a-8d1/pyosim
   API_URL: https://pyosim-api-785567251954.asia-northeast3.run.app
+  GA_ID: G-H39S9GR8PY
 
 jobs:
   deploy:
@@ -46,6 +47,7 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_API_BASE="$API_URL" \
+            --build-arg NEXT_PUBLIC_GA_ID="$GA_ID" \
             -t "$AR/web:$GITHUB_SHA" -t "$AR/web:latest" ./frontend
           docker push "$AR/web:$GITHUB_SHA"
           docker push "$AR/web:latest"

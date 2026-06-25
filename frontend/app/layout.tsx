@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import WatchBell from "./WatchBell";
 import FreshnessBadge from "./FreshnessBadge";
 // Pretendard (가변 폰트 + 다이내믹 서브셋) — 디자인 시스템 기본 서체
@@ -42,6 +43,9 @@ export default function RootLayout({
         </header>
         {children}
       </body>
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      )}
     </html>
   );
 }
