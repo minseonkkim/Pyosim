@@ -51,7 +51,13 @@ run_job pyosim-committees "$ETL_IMAGE" \
   "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
   python -m jobs.run --job committees
 
-# 3) 입법예고 시민 찬반 의견 집계 — ETL 이미지(스크랩, 느림)
+# 3-a) 입법예고 메타데이터 — ETL 이미지 (열린국회 API).
+#      ⚠️ 시민의견(3-b)의 선행 잡: LawNotice 테이블이 비어 있으면 의견 집계가 0건이 된다.
+run_job pyosim-lawnotices "$ETL_IMAGE" \
+  "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
+  python -m jobs.run --job lawnotices
+
+# 3-b) 입법예고 시민 찬반 의견 집계 — ETL 이미지(pal 스크랩, 느림). 위 메타가 있어야 동작.
 run_job pyosim-lawnotice-opinions "$ETL_IMAGE" \
   "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
   python -m jobs.run --job lawnotice_opinions --limit 50
@@ -60,6 +66,11 @@ run_job pyosim-lawnotice-opinions "$ETL_IMAGE" \
 run_job pyosim-attendance "$ETL_IMAGE" \
   "DATABASE_URL=database-url:latest" \
   python -m jobs.run --job attendance
+
+# 5) 청원 본문(취지·내용·분야) — ETL 이미지 (국민동의청원 API). 목록은 차지만 상세 본문이 빈다.
+run_job pyosim-petition-content "$ETL_IMAGE" \
+  "DATABASE_URL=database-url:latest,ASSEMBLY_API_KEY=assembly-key:latest" \
+  python -m jobs.run --job petition_content
 
 echo "✅ 완료. 확인:"
 echo "  curl -s '${API_IMAGE%%/api*}'  # (아래 API URL로)"

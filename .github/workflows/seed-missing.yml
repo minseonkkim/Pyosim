@@ -49,7 +49,7 @@ jobs:
           echo "================ ④ database-url 시크릿 버전 목록 ===================="
           gcloud secrets versions list database-url --format="table(name,state,createTime)"
           echo "================ ⑤ 잡 실제 적재량 (로그의 '신규 N' 확인) ============"
-          for j in pyosim-seed-questions pyosim-attendance pyosim-committees pyosim-lawnotice-opinions; do
+          for j in pyosim-seed-questions pyosim-attendance pyosim-committees pyosim-lawnotices pyosim-lawnotice-opinions pyosim-petition-content; do
             echo "----- $j 최근 로그 -----"
             gcloud logging read \
               "resource.type=cloud_run_job AND resource.labels.job_name=$j" \
