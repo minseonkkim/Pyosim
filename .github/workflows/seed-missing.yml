@@ -30,3 +30,32 @@ jobs:
 
       - name: 누락 데이터 적재 (일회성 Job 생성·실행)
         run: bash infra/seed-prod-missing.sh
+
+      # ───────── 진단: 잡이 쓴 DB와 API가 읽는 DB가 같은지 확인 ─────────
+      # 잡은 초록인데 API가 비어있으면 'DB 불일치'가 유력. 아래 출력으로 갈린다.
+      - name: 진단 (DB 일치 여부 + 잡 실제 적재량)
+        if: always()
+        run: |
+          set +e
+          echo "================ ① API 서비스가 보는 DATABASE_URL 출처 ================"
+          gcloud run services describe pyosim-api --region "$REGION" \
+            --format="yaml(spec.template.spec.containers[].env)"
+          echo "================ ② daily 잡이 보는 DATABASE_URL 출처 (정답 기준) ====="
+          gcloud run jobs describe pyosim-daily --region "$REGION" \
+            --format="yaml(spec.template.spec.template.spec.containers[].env)"
+          echo "================ ③ 내 seed 잡이 보는 DATABASE_URL 출처 =============="
+          gcloud run jobs describe pyosim-seed-questions --region "$REGION" \
+            --format="yaml(spec.template.spec.template.spec.containers[].env)"
+          echo "================ ④ database-url 시크릿 버전 목록 ===================="
+          gcloud secrets versions list database-url --format="table(name,state,createTime)"
+          echo "================ ⑤ 잡 실제 적재량 (로그의 '신규 N' 확인) ============"
+          for j in pyosim-seed-questions pyosim-attendance pyosim-committees pyosim-lawnotice-opinions; do
+            echo "----- $j 최근 로그 -----"
+            gcloud logging read \
+              "resource.type=cloud_run_job AND resource.labels.job_name=$j" \
+              --limit 15 --freshness=1d --format="value(textPayload)"
+          done
+          echo "================ ⑥ 공개 API 현재 상태 =============================="
+          API=https://pyosim-api-785567251954.asia-northeast3.run.app
+          echo -n "questions: "; curl -s -A Mozilla "$API/api/questions?preview=true" | head -c 120; echo
+          echo -n "attendance(person 20): "; curl -s -A Mozilla "$API/api/persons/20" | head -c 200; echo
