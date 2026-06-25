@@ -6,6 +6,7 @@
   python -m jobs.run --job photos               # 의원 사진(ALLNAMEMBER NAAS_PIC)
   python -m jobs.run --job bills
   python -m jobs.run --job vote_records --limit 20
+  python -m jobs.run --job attendance                 # 표결기록의 '불참' 비율 → 의원 출석률
   python -m jobs.run --job proposers                  # 발의법률안 + 대표발의자(의원) 연결
   python -m jobs.run --job proposer_kinds             # 제안자 구분(정부·위원장) 보강
   python -m jobs.run --job committees                 # 위원회 엔티티 + 의원 위원회경력(제22대)
@@ -120,6 +121,21 @@ def _vote_records(args) -> None:
     finally:
         session.close()
     print(f"vote_records 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
+
+
+@register("attendance")
+def _attendance(args) -> None:
+    # 의원별 표결기록의 '불참' 비율 → Person.attendance_rate (별도 출석 API 없음)
+    from jobs import ingest
+
+    session = _build_session()
+    try:
+        stats = ingest.run_attendance(
+            session, age=args.age, dry_run=args.dry_run, limit=args.limit
+        )
+    finally:
+        session.close()
+    print(f"attendance 완료{' (dry-run)' if args.dry_run else ''}: {stats}")
 
 
 @register("proposers")

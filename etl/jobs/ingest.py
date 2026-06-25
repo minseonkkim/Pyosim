@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from datetime import date, datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from clients.assembly import AssemblyClient
@@ -305,6 +305,51 @@ def run_vote_records(
         "skipped_member": n_skip_member,
         "skipped_choice": n_skip_choice,
     }
+
+
+# ───────────────────────── attendance ─────────────────────────
+def run_attendance(
+    session: Session, client: AssemblyClient | None = None, *, age: str = DEFAULT_AGE,
+    dry_run: bool = False, limit: int | None = None,
+) -> dict:
+    """본회의 출석률 = (전체 표결기록 − 불참) / 전체 표결기록.
+
+    열린국회정보엔 별도 출석 API 가 없다. 대신 의원별 표결기록(`run_vote_records`)에
+    '불참'이 포함되므로, 표결한 안건 대비 출석(찬/반/기권) 비율로 출석률을 산출한다.
+    → `vote_records` 잡을 먼저 돌려야 의미 있는 값이 나온다.
+
+    client·age 는 시그니처 통일용(미사용). 표결기록 없는 의원은 건드리지 않음(NULL 유지
+    → 프론트에서 '—' 표기). limit 은 갱신 의원 수 상한(주로 테스트용).
+    """
+    persons = {p.id: p for p in session.scalars(select(Person)).all()}
+
+    # 의원별 (전체 수, 불참 수) 집계 — 한 번의 GROUP BY 로.
+    absent_expr = func.sum(case((VoteRecord.choice == VoteChoice.불참, 1), else_=0))
+    rows = session.execute(
+        select(
+            VoteRecord.person_id,
+            func.count(VoteRecord.id),
+            absent_expr,
+        ).group_by(VoteRecord.person_id)
+    ).all()
+
+    n_set = n_skip = 0
+    for person_id, total, absent in rows:
+        if limit is not None and n_set >= limit:
+            break
+        person = persons.get(person_id)
+        if person is None or not total:
+            n_skip += 1
+            continue
+        rate = round((total - (absent or 0)) / total, 4)
+        if not dry_run:
+            person.attendance_rate = rate
+            person.last_verified = _now()
+        n_set += 1
+
+    if not dry_run:
+        session.commit()
+    return {"members_set": n_set, "skipped": n_skip, "of_members": len(persons)}
 
 
 # ───────────────────────── proposers (발의자 연결) ─────────────────────────

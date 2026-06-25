@@ -29,7 +29,8 @@ from jobs import categorize, ingest
 
 # ── 일일 갱신 잡 순서 (의존성 고려) ──────────────────────────────
 # members(사람 기준) → bills(새 법안) → proposers/vote_records(의원 활동 diff)
-# → bill_stages(법안 단계 diff) → petitions(청원 단계 diff) → categorize(피드 태깅).
+# → attendance(표결기록 → 출석률, vote_records 뒤) → bill_stages(법안 단계 diff)
+# → petitions(청원 단계 diff) → categorize(피드 태깅).
 # 각 항목: (잡 이름, 호출 함수, kwargs). kwargs 의 limit 은 무거운 잡 보호용 기본값.
 def _api_job(fn):
     """ingest.run_* 류: (session, client, *, age, dry_run, limit) 시그니처."""
@@ -51,6 +52,7 @@ DAILY: list[tuple[str, "callable", int | None]] = [
     ("bills", _api_job(ingest.run_bills), None),
     ("proposers", _api_job(ingest.run_proposers), None),
     ("vote_records", _api_job(ingest.run_vote_records), None),
+    ("attendance", _api_job(ingest.run_attendance), None),
     ("bill_stages", _api_job(ingest.run_bill_stages), None),
     ("petitions", _api_job(ingest.run_petitions), None),
     ("categorize", _no_client_job(categorize.run_categorize), None),
