@@ -1,7 +1,7 @@
 "use client";
 
 // 정치인 프로필 상세 (Phase 1-2) — 그물망 허브.
-// 발의 법안 → 법안(현재 likms 직링크), 표결 요약, 전과(🟡 출처 동반·동일 양식).
+// 발의 법안 → 법안(현재 likms 직링크), 표결 요약.
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -204,32 +204,6 @@ export default function PersonPage() {
           <VoteStat label="기권" n={vs.abstain} />
           <VoteStat label="불참" n={vs.absent} />
         </div>
-      )}
-
-      {/* 전과 — 🟡 동일 양식·출처 동반 */}
-      <h3 style={{ marginTop: 24, marginBottom: 8 }}>전과 기록</h3>
-      {p.criminal_records.length === 0 ? (
-        <p className="muted" style={{ fontSize: 14 }}>공개된 전과 기록이 없어요.</p>
-      ) : (
-        p.criminal_records.map((c, i) => (
-          <div className="card" key={i}>
-            <div style={{ fontWeight: 600 }}>{c.charge}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {[c.sentence, c.date_sentenced, c.is_final == null ? null : c.is_final ? "확정" : "미확정"]
-                .filter(Boolean)
-                .join(" · ")}
-            </div>
-            <div style={{ fontSize: 12, marginTop: 6 }}>
-              {c.source_url ? (
-                <a href={c.source_url} target="_blank" rel="noreferrer">
-                  출처 ↗
-                </a>
-              ) : (
-                <span className="muted">출처 미연동(데모)</span>
-              )}
-            </div>
-          </div>
-        ))
       )}
 
       {/* 🟡 중립 고지 + 출처 */}
