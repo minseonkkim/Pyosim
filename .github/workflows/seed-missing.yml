@@ -1,0 +1,32 @@
+name: Seed missing prod data
+
+# 프로덕션 DB에 '안 나오던' 기능 데이터(설문·위원회·시민의견·출석률)를 1회 적재한다.
+# 로컬 gcloud 불필요 — GitHub Actions 탭에서 'Run workflow' 버튼으로 수동 실행.
+# 인증은 배포와 동일한 Workload Identity Federation(github-deployer SA)을 재사용한다.
+on:
+  workflow_dispatch: {}
+
+env:
+  PROJECT_ID: project-01308378-97ce-4b8a-8d1
+  REGION: asia-northeast3
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: GCP 인증 (Workload Identity)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/785567251954/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: github-deployer@project-01308378-97ce-4b8a-8d1.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: 누락 데이터 적재 (일회성 Job 생성·실행)
+        run: bash infra/seed-prod-missing.sh
