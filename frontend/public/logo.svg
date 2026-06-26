@@ -1,0 +1,6 @@
+<svg width="480" height="160" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg">
+  <!-- 표심 가로 워드마크 — 투명 배경, ink-900. 헤더/문서/프레스킷용 -->
+  <text x="0" y="118" fill="#18171D"
+        font-family="Pretendard, 'Pretendard Variable', -apple-system, system-ui, sans-serif"
+        font-size="120" font-weight="800" letter-spacing="-4">표심</text>
+</svg>

@@ -7,10 +7,33 @@ import FreshnessBadge from "./FreshnessBadge";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "표심 · Pyosim — Where do you stand?",
   description:
     "실제 국회 표결 데이터로 내 생각이 어떤 표결과 닮았는지 확인하고, 진행 중인 법안에 의견까지.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  // 링크 공유 미리보기. og:image 는 app/opengraph-image.tsx 가 자동 생성.
+  openGraph: {
+    type: "website",
+    siteName: "표심 · Pyosim",
+    title: "표심 · Pyosim — Where do you stand?",
+    description:
+      "실제 국회 표결 데이터로 내 생각이 어떤 표결과 닮았는지 확인하고, 진행 중인 법안에 의견까지.",
+    locale: "ko_KR",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "표심 · Pyosim — Where do you stand?",
+    description:
+      "실제 국회 표결 데이터로 내 생각이 어떤 표결과 닮았는지 확인하고, 진행 중인 법안에 의견까지.",
+  },
 };
 
 export default function RootLayout({
