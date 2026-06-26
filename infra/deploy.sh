@@ -113,13 +113,17 @@ migrate() {
 }
 
 frontend() {
-  log "프론트 빌드·배포 (백엔드 URL 주입)"
+  log "프론트 빌드·배포 (백엔드·사이트 URL 주입)"
   api_url
+  # metadataBase(og:image 절대 URL)용 사이트 URL. 빌드 시점에 박혀야 한다.
+  # Cloud Run URL 은 한 번 생성되면 안 바뀜 → 기존 서비스에서 조회, 최초 배포면 빈 값 허용.
+  WEB_URL="$(gcloud run services describe pyosim-web --region "$REGION" --format='value(status.url)' 2>/dev/null || true)"
+  echo "→ 프론트 URL(빌드 주입): ${WEB_URL:-<최초 배포: 미정>}"
   local cfg; cfg="$(mktemp)"
   cat >"$cfg" <<YAML
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ["build","-t","$WEB_IMAGE","--build-arg","NEXT_PUBLIC_API_BASE=$API_URL","--build-arg","NEXT_PUBLIC_GA_ID=${GA_ID:-G-H39S9GR8PY}","."]
+    args: ["build","-t","$WEB_IMAGE","--build-arg","NEXT_PUBLIC_API_BASE=$API_URL","--build-arg","NEXT_PUBLIC_SITE_URL=$WEB_URL","--build-arg","NEXT_PUBLIC_GA_ID=${GA_ID:-G-H39S9GR8PY}","."]
 images: ["$WEB_IMAGE"]
 YAML
   gcloud builds submit "$REPO_ROOT/frontend" --config "$cfg"
