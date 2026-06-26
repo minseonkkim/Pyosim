@@ -14,9 +14,14 @@ export const metadata: Metadata = {
   title: "표심 · Pyosim — Where do you stand?",
   description:
     "실제 국회 표결 데이터로 내 생각이 어떤 표결과 닮았는지 확인하고, 진행 중인 법안에 의견까지.",
+  // SVG 아이콘은 <text>가 Pretendard 폰트에 의존 → 브라우저 밖(공유 크롤러·썸네일러)에서
+  // 폰트 없이 래스터화되며 글자가 깨진다. 외부 노출용은 PNG, 탭용만 SVG 유지.
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/icon-180.png",
   },
   // 링크 공유 미리보기. og:image 는 app/opengraph-image.tsx 가 자동 생성.
   openGraph: {
