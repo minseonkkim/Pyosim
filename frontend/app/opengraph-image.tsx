@@ -33,40 +33,16 @@ export default async function OpengraphImage() {
           fontFamily: "Pretendard",
         }}
       >
-        {/* eyebrow — 아이콘 마크 + 한 줄 소개 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 76,
-              height: 76,
-              borderRadius: 18,
-              background: "#18171d",
-              border: "1px solid #3d3b45",
-              fontSize: 36,
-              fontWeight: 800,
-              letterSpacing: "-0.04em",
-            }}
-          >
-            표심
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 26,
-              fontWeight: 500,
-              color: "#9794a0",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            실제 국회 표결 데이터 기반 시민 참여 플랫폼
-          </div>
-        </div>
-
-        {/* main — 워드마크 + 슬로건 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* main — 워드마크 + 슬로건 (세로 중앙) */}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 20,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "baseline", gap: 26 }}>
             <div
               style={{
@@ -104,7 +80,7 @@ export default async function OpengraphImage() {
           </div>
         </div>
 
-        {/* footer — 설명 */}
+        {/* footer — 한 줄 소개 */}
         <div
           style={{
             display: "flex",
@@ -116,7 +92,7 @@ export default async function OpengraphImage() {
             letterSpacing: "-0.01em",
           }}
         >
-          내 생각과 닮은 국회 표결을 확인하고, 진행 중인 법안에 의견까지.
+          실제 국회 표결 데이터 기반 시민 참여 플랫폼
         </div>
       </div>
     ),
