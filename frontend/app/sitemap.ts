@@ -10,14 +10,14 @@ export const revalidate = 3600;
 
 // 사이트맵 전용 fetch — 실패해도 사이트맵 전체가 깨지지 않도록 빈 배열로 흡수.
 // (빌드/배포 순간 백엔드가 잠시 안 떠 있어도 정적 라우트는 항상 나가야 한다.)
-async function fetchIds(
+async function fetchIds<T>(
   path: string,
-  pick: (json: any) => Array<{ id: number }>,
+  pick: (json: T) => Array<{ id: number }>,
 ): Promise<number[]> {
   try {
     const res = await fetch(`${API_BASE}${path}`, { next: { revalidate } });
     if (!res.ok) return [];
-    return pick(await res.json()).map((x) => x.id);
+    return pick((await res.json()) as T).map((x) => x.id);
   } catch {
     return [];
   }
@@ -39,11 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 동적 상세 — 그물망의 실제 콘텐츠 페이지(검색 롱테일의 핵심).
   // 의원: 전체 반환 / 청원: limit 넉넉히 / 법안: 표결·시민의견이 실제 있는 큐레이션 피드에서.
+  type IdList = Array<{ id: number }>;
+  type Feed = { items: IdList };
   const [persons, petitions, contested, opinions] = await Promise.all([
-    fetchIds("/api/persons", (j) => j),
-    fetchIds("/api/petitions?limit=1000", (j) => j.items),
-    fetchIds("/api/bills?limit=1000&sort=contested", (j) => j.items),
-    fetchIds("/api/bills?limit=1000&sort=opinions", (j) => j.items),
+    fetchIds<IdList>("/api/persons", (j) => j),
+    fetchIds<Feed>("/api/petitions?limit=1000", (j) => j.items),
+    fetchIds<Feed>("/api/bills?limit=1000&sort=contested", (j) => j.items),
+    fetchIds<Feed>("/api/bills?limit=1000&sort=opinions", (j) => j.items),
   ]);
   const billIds = Array.from(new Set([...contested, ...opinions]));
 
