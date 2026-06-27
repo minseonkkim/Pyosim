@@ -39,6 +39,11 @@ export const metadata: Metadata = {
     description:
       "실제 국회 표결 데이터로 내 생각이 어떤 표결과 닮았는지 확인하고, 진행 중인 법안에 의견까지.",
   },
+  // 검색엔진 소유권 확인 메타 태그(공개값 — HTML 에 노출되는 게 정상).
+  verification: {
+    google: "1Sny9yu3bzMgM2eBv8xJu1kNgI9V5_Pv9uJEogAnFf4",
+    other: { "naver-site-verification": "629fb0a6e8e84dfc95cecd529be60bc3dff85b36" },
+  },
 };
 
 export default function RootLayout({
