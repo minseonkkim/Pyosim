@@ -17,7 +17,7 @@ from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.bill_content import fetch_bill_content
 from app.bill_summary import summarize_bill
@@ -461,10 +461,14 @@ def get_bill(bid: int, db: Session = Depends(get_db)) -> BillDetail:
     # ⚠️ AI 요약(로컬 LLM, 수십 초)은 응답을 막지 않도록 분리 — 프론트가 /summary 로 따로 호출.
     _ensure_content(db, bill)
 
-    # 대표발의자
+    # 대표발의자 (party 를 함께 적재 — lazy load 왕복 제거)
     proposer = None
     if bill.proposer_id:
-        p = db.get(Person, bill.proposer_id)
+        p = db.scalars(
+            select(Person)
+            .options(selectinload(Person.party))
+            .where(Person.id == bill.proposer_id)
+        ).first()
         if p is not None:
             proposer = ProposerBrief(
                 id=p.id, name=p.name,

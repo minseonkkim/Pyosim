@@ -20,7 +20,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.models import (
@@ -128,7 +128,8 @@ def list_persons(
     q: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[PersonListItem]:
-    stmt = select(Person)
+    # 🚀 party 를 함께 적재(selectinload) — 목록 N+1(인물마다 party lazy load) 제거.
+    stmt = select(Person).options(selectinload(Person.party))
     if party:
         stmt = stmt.join(Party, Party.id == Person.party_id).where(Party.name == party)
     if q:
@@ -148,7 +149,12 @@ def list_persons(
 
 @router.get("/{pid}", response_model=PersonProfile)
 def get_person(pid: int, db: Session = Depends(get_db)) -> PersonProfile:
-    person = db.get(Person, pid)
+    # 🚀 party·criminal_records 를 함께 적재 — 상세 응답의 lazy load 왕복 제거.
+    person = db.scalars(
+        select(Person)
+        .options(selectinload(Person.party), selectinload(Person.criminal_records))
+        .where(Person.id == pid)
+    ).first()
     if person is None:
         raise HTTPException(status_code=404, detail="해당 정치인을 찾을 수 없습니다.")
 

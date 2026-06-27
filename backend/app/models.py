@@ -118,13 +118,13 @@ class Bill(Base):
     # 열린국회정보 BILL_ID(PRC_...) — 표결기록·likms 직링크 키
     assembly_bill_id: Mapped[str | None] = mapped_column(String(60), index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
-    proposer_id: Mapped[int | None] = mapped_column(ForeignKey("person.id"))
+    proposer_id: Mapped[int | None] = mapped_column(ForeignKey("person.id"), index=True)
     # 의원 외 제안자(정부·위원장·전직의원) 표기용 — proposer_id 가 없을 때 화면에 표시.
     # 출처: 의안검색 OpenAPI(TVBPMBILL11) PROPOSER_KIND / PROPOSER.
     # 🟡 정부안 소관부처(○○부)는 API 에 없어 PROPOSER 는 "정부" 까지만 제공된다.
     proposer_kind: Mapped[str | None] = mapped_column(String(20))  # 의원/정부/위원장
     proposer_text: Mapped[str | None] = mapped_column(String(200))  # 예: "정부", "정무위원장"
-    proposed_date: Mapped[date | None] = mapped_column(Date)
+    proposed_date: Mapped[date | None] = mapped_column(Date, index=True)  # 검색·목록 최근발의순 정렬
     # 처리 단계별 의결일 (본회의 처리안건 nwbpacrgavhjryiph) — 날짜 타임라인(Phase 1-3)
     # 🟡 공식 일자 그대로. 미도달 단계는 null(= '여기서 멈췄다'를 사실로 드러냄).
     committee_proc_date: Mapped[date | None] = mapped_column(Date)  # 소관위 의결
@@ -176,7 +176,7 @@ class Vote(Base):
     member_total: Mapped[int | None] = mapped_column(Integer)  # 재적
     vote_total: Mapped[int | None] = mapped_column(Integer)  # 총투표
     yes_total: Mapped[int | None] = mapped_column(Integer)  # 찬성
-    no_total: Mapped[int | None] = mapped_column(Integer)  # 반대
+    no_total: Mapped[int | None] = mapped_column(Integer, index=True)  # 반대 — 피드 반대표순 정렬
     blank_total: Mapped[int | None] = mapped_column(Integer)  # 기권
 
     source_url: Mapped[str | None] = mapped_column(Text)
@@ -330,7 +330,7 @@ class LawNotice(Base):
     is_ongoing: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # 진행중 예고 여부
 
     # 시민 찬반 의견 집계(스크랩) — 미수집이면 null. 🟡 본문 없이 입장별 건수만.
-    opinion_total: Mapped[int | None] = mapped_column(Integer)  # searchConRng=0 전체
+    opinion_total: Mapped[int | None] = mapped_column(Integer, index=True)  # searchConRng=0 전체 — 의견순 정렬
     agree_count: Mapped[int | None] = mapped_column(Integer)  # searchConRng=1 찬성
     oppose_count: Mapped[int | None] = mapped_column(Integer)  # searchConRng=2 반대
     etc_count: Mapped[int | None] = mapped_column(Integer)  # 전체 - 찬성 - 반대
