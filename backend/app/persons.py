@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.cache import cached
 from app.db import get_db
 from app.models import (
     Bill,
@@ -123,6 +124,7 @@ def _age(birth: date | None) -> int | None:
 
 # ───────────────────────── 엔드포인트 ─────────────────────────
 @router.get("", response_model=list[PersonListItem])
+@cached()  # 🚀 의원 목록 — 일일 갱신, 30분 TTL(party/q 필터 조합별 캐싱)
 def list_persons(
     party: str | None = None,
     q: str | None = None,

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.bill_content import fetch_bill_content
 from app.bill_summary import summarize_bill
+from app.cache import cached
 from app.config import settings
 from app.db import get_db
 from app.models import Bill, LawNotice, Party, Person, Vote, VoteChoice, VoteRecord
@@ -325,6 +326,7 @@ def _contested_cards(db: Session, limit: int, category: str | None) -> list["Bil
 
 
 @router.get("", response_model=BillFeed)
+@cached()  # 🚀 일일 갱신 데이터 — 30분 TTL 캐싱(피드는 최다 트래픽·최중량 집계)
 def list_bills(
     limit: int = 20, category: str | None = None, sort: str | None = None,
     db: Session = Depends(get_db),
@@ -342,6 +344,7 @@ def list_bills(
 
 
 @router.get("/search", response_model=BillFeed)
+@cached(ttl=600, maxsize=512)  # 🚀 검색어별 캐싱 — q 공간이 넓어 TTL 짧게·maxsize 크게
 def search_bills(q: str, limit: int = 50, db: Session = Depends(get_db)) -> BillFeed:
     """제목·의안번호로 22대 의안 전체를 검색 — 표결 여부와 무관(계류 포함).
 
@@ -385,6 +388,7 @@ def search_bills(q: str, limit: int = 50, db: Session = Depends(get_db)) -> Bill
 
 
 @router.get("/categories", response_model=CategoryList)
+@cached()  # 🚀 칩 필터 집계 — 일일 갱신, 30분 TTL
 def list_categories(db: Session = Depends(get_db)) -> CategoryList:
     """피드에 실제 존재하는 생활 카테고리 + 건수 — 칩 필터용.
 
